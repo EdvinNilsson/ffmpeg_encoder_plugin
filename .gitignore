@@ -57,3 +57,4 @@ CMakeUserPresets.json
 
 ## FFmpeg
 ffmpeg
+ffmpeg_sources

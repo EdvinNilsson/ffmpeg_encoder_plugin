@@ -12,13 +12,20 @@ if (NOT MSVC)
     set(CMAKE_CXX_FLAGS "-fPIC -Wall -Wno-unused-variable -Wno-multichar")
 endif ()
 
-find_path(AVCODEC_INCLUDE_DIR libavcodec/avcodec.h HINTS "${FFMPEG_DIR}/include")
+find_path(FFMPEG_INCLUDE_DIR libavcodec/avcodec.h HINTS "${FFMPEG_DIR}/include")
 find_library(AVCODEC_LIBRARY avcodec HINTS "${FFMPEG_DIR}/lib")
-
-find_path(AVUTIL_INCLUDE_DIR libavutil/avutil.h HINTS "${FFMPEG_DIR}/include")
 find_library(AVUTIL_LIBRARY avutil HINTS "${FFMPEG_DIR}/lib")
 
-include_directories(include wrapper ${AVCODEC_INCLUDE_DIR} ${AVUTIL_INCLUDE_DIR})
+get_filename_component(AVCODEC_EXT "${AVCODEC_LIBRARY}" EXT)
+if (AVCODEC_EXT STREQUAL ".a")
+    set(FFMPEG_IS_STATIC TRUE)
+
+    find_library(X264_LIBRARY x264 HINTS "${FFMPEG_DIR}/lib")
+    find_library(X265_LIBRARY x265 HINTS "${FFMPEG_DIR}/lib")
+    find_library(SVTAV1_LIBRARY SvtAv1Enc HINTS "${FFMPEG_DIR}/lib")
+endif ()
+
+include_directories(include wrapper ${FFMPEG_INCLUDE_DIR})
 
 set(SRCS
         av1_encoder.cpp
@@ -58,9 +65,13 @@ set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "")
 set_target_properties(${PROJECT_NAME} PROPERTIES SUFFIX ".dvcp")
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_options(${PROJECT_NAME} PRIVATE -shared -static-libstdc++ -static-libgcc)
+    target_link_options(${PROJECT_NAME} PRIVATE -shared -static-libstdc++ -static-libgcc -Wl,--no-undefined -Wl,-Bsymbolic)
 else ()
     target_link_options(${PROJECT_NAME} PRIVATE -dynamiclib)
 endif ()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE host_plugin ${AVCODEC_LIBRARY} ${AVUTIL_LIBRARY})
+
+if (FFMPEG_IS_STATIC)
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${X264_LIBRARY} ${X265_LIBRARY} ${SVTAV1_LIBRARY} numa va va-drm va-x11 X11)
+endif ()
