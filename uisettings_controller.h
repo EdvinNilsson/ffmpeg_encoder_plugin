@@ -1,5 +1,6 @@
 #pragma once
 
+#include "encoder_info.h"
 #include "wrapper/plugin_api.h"
 
 namespace IOPlugin {
@@ -19,6 +20,7 @@ class UISettingsController final {
 
    private:
     void InitDefaults();
+    void SetFirstSupportedQualityMode();
     StatusCode RenderQuality(HostListRef* settingsList) const;
 
    public:

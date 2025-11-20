@@ -20,15 +20,7 @@ void UISettingsController::Load(IPropertyProvider* values) {
     int32_t val32 = 0;
     values->GetINT32(qualityModeId.c_str(), val32);
     qualityMode = static_cast<QualityMode>(val32);
-
-    if (!(qualityMode & encoderInfo.qualityModes)) {
-        if (encoderInfo.qualityModes & CRF)
-            qualityMode = CRF;
-        else if (encoderInfo.qualityModes & CQP)
-            qualityMode = CQP;
-        else if (encoderInfo.qualityModes & VBR)
-            qualityMode = VBR;
-    }
+    SetFirstSupportedQualityMode();
 
     values->GetINT32(qpId.c_str(), qp);
     values->GetINT32(bitrateId.c_str(), bitRate);
@@ -56,6 +48,8 @@ StatusCode UISettingsController::Render(HostListRef* settingsList) const {
 
 void UISettingsController::InitDefaults() {
     qualityMode = CRF;
+    SetFirstSupportedQualityMode();
+
     qp = encoderInfo.qp[1];
     bitRate = 6000;
     preset = encoderInfo.defaultPreset;
@@ -65,6 +59,17 @@ void UISettingsController::InitDefaults() {
     qpId = prefix + "qp";
     bitrateId = prefix + "bitrate";
     presetId = prefix + "preset";
+}
+
+void UISettingsController::SetFirstSupportedQualityMode() {
+    if (!(qualityMode & encoderInfo.qualityModes)) {
+        if (encoderInfo.qualityModes & CRF)
+            qualityMode = CRF;
+        else if (encoderInfo.qualityModes & CQP)
+            qualityMode = CQP;
+        else if (encoderInfo.qualityModes & VBR)
+            qualityMode = VBR;
+    }
 }
 
 StatusCode UISettingsController::RenderQuality(HostListRef* settingsList) const {
