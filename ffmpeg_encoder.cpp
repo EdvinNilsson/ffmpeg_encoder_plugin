@@ -66,7 +66,7 @@ StatusCode FFmpegEncoder::RegisterCodecs(HostListRef* list, const EncoderInfo& e
     bool hwAcc = encoderInfo.hwAcceleration != None;
     codecInfo.SetProperty(pIOPropHWAcc, propTypeUInt8, &hwAcc, 1);
 
-    const std::vector<std::string> containerVec = {"mov", "mp4"};
+    const std::vector<std::string> containerVec = {"mov", "mp4", "mkv"};
     std::string valStrings;
     for (size_t i = 0; i < containerVec.size(); ++i) {
         valStrings.append(containerVec[i]);
