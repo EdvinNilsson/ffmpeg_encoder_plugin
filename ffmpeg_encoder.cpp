@@ -1,9 +1,15 @@
 #include "ffmpeg_encoder.h"
 
-// av_err2str fails to compile with MSVC
-#if _MSC_VER
-#define av_err2str(err) std::to_string(err)
-#endif
+extern "C" {
+#include <libavutil/opt.h>
+}
+
+#undef av_err2str
+av_always_inline std::string av_err2string(int errnum) {
+    char str[AV_ERROR_MAX_STRING_SIZE];
+    return av_make_error_string(str, AV_ERROR_MAX_STRING_SIZE, errnum);
+}
+#define av_err2str(err) av_err2string(err).c_str()
 
 StatusCode FFmpegEncoder::DoInit(HostPropertyCollectionRef* p_pProps) { return errNone; }
 
@@ -54,10 +60,11 @@ StatusCode FFmpegEncoder::RegisterCodecs(HostListRef* list, const EncoderInfo& e
     uint8_t fieldSupport = fieldProgressive | fieldTop | fieldBottom;
     codecInfo.SetProperty(pIOPropFieldOrder, propTypeUInt8, &fieldSupport, 1);
 
-    uint8_t vThreadSafe = 1;
-    codecInfo.SetProperty(pIOPropThreadSafe, propTypeUInt8, &vThreadSafe, 1);
+    uint8_t threadSafe = 1;
+    codecInfo.SetProperty(pIOPropThreadSafe, propTypeUInt8, &threadSafe, 1);
 
-    codecInfo.SetProperty(pIOPropHWAcc, propTypeUInt8, &encoderInfo.useVaapi, 1);
+    bool hwAcc = encoderInfo.hwAcceleration != None;
+    codecInfo.SetProperty(pIOPropHWAcc, propTypeUInt8, &hwAcc, 1);
 
     const std::vector<std::string> containerVec = {"mov", "mp4"};
     std::string valStrings;
@@ -111,7 +118,7 @@ StatusCode FFmpegEncoder::DoOpen(HostBufferRef* p_pBuff) {
     frameRateNum = commonProps.GetFrameRateNum();
     frameRateDen = commonProps.GetFrameRateDen();
     pixelFormat = encoderInfo.pixelFormat;
-    useVaapi = encoderInfo.useVaapi;
+    useVaapi = encoderInfo.hwAcceleration == Vaapi;
 
     const AVCodec* codec = avcodec_find_encoder_by_name(encoderInfo.encoder);
     if (!codec) {
@@ -205,7 +212,7 @@ void FFmpegEncoder::ApplyOptions(AVCodecContext* ctx, UISettingsController& sett
                 av_opt_set(ctx->priv_data, "rc_mode", "CQP", 0);
                 ctx->global_quality = encoderInfo.fourCC == 'av01' ? settings.GetQP() * 4 : settings.GetQP();
             } else {
-                av_opt_set_int(ctx->priv_data, "qp", settings.GetQP(), 0);
+                av_opt_set_int(ctx->priv_data, encoderInfo.hwAcceleration == Nvenc ? "cq" : "qp", settings.GetQP(), 0);
             }
             break;
         case CRF:
@@ -364,7 +371,7 @@ bool FFmpegEncoder::IsEncoderSupported(const EncoderInfo& encoderInfo) {
     bool isEncoderSupported = false;
 
     const int logLevel = av_log_get_level();
-    av_log_set_level(AV_LOG_QUIET);
+    av_log_set_level(AV_LOG_ERROR);
 
     AVCodecContext* ctx = nullptr;
     AVBufferRef* hwFramesRef = nullptr;
@@ -374,7 +381,7 @@ bool FFmpegEncoder::IsEncoderSupported(const EncoderInfo& encoderInfo) {
     const AVCodec* codec = avcodec_find_encoder_by_name(encoderInfo.encoder);
     if (!codec) goto end;
 
-    if (!encoderInfo.useVaapi) {
+    if (encoderInfo.hwAcceleration == None) {
         isEncoderSupported = true;
         goto end;
     }
@@ -382,23 +389,25 @@ bool FFmpegEncoder::IsEncoderSupported(const EncoderInfo& encoderInfo) {
     ctx = avcodec_alloc_context3(codec);
     if (!ctx) goto end;
 
-    ctx->pix_fmt = AV_PIX_FMT_VAAPI;
+    ctx->pix_fmt = encoderInfo.hwAcceleration == Vaapi ? AV_PIX_FMT_VAAPI : encoderInfo.pixelFormat;
     ctx->time_base = {25, 1};
     ctx->width = 1920;
     ctx->height = 1080;
 
-    if (av_hwdevice_ctx_create(&hwDeviceCtx, AV_HWDEVICE_TYPE_VAAPI, nullptr, nullptr, 0) < 0) goto end;
-    if (!((hwFramesRef = av_hwframe_ctx_alloc(hwDeviceCtx)))) goto end;
+    if (encoderInfo.hwAcceleration == Vaapi) {
+        if (av_hwdevice_ctx_create(&hwDeviceCtx, AV_HWDEVICE_TYPE_VAAPI, nullptr, nullptr, 0) < 0) goto end;
+        if (!((hwFramesRef = av_hwframe_ctx_alloc(hwDeviceCtx)))) goto end;
 
-    framesCtx = reinterpret_cast<AVHWFramesContext*>(hwFramesRef->data);
-    framesCtx->format = AV_PIX_FMT_VAAPI;
-    framesCtx->sw_format = AV_PIX_FMT_NV12;
-    framesCtx->width = ctx->width;
-    framesCtx->height = ctx->height;
-    if (av_hwframe_ctx_init(hwFramesRef) < 0) goto end;
+        framesCtx = reinterpret_cast<AVHWFramesContext*>(hwFramesRef->data);
+        framesCtx->format = AV_PIX_FMT_VAAPI;
+        framesCtx->sw_format = AV_PIX_FMT_NV12;
+        framesCtx->width = ctx->width;
+        framesCtx->height = ctx->height;
+        if (av_hwframe_ctx_init(hwFramesRef) < 0) goto end;
 
-    ctx->hw_frames_ctx = av_buffer_ref(hwFramesRef);
-    if (!ctx->hw_frames_ctx) goto end;
+        ctx->hw_frames_ctx = av_buffer_ref(hwFramesRef);
+        if (!ctx->hw_frames_ctx) goto end;
+    }
 
     if (avcodec_open2(ctx, codec, nullptr) < 0) goto end;
 

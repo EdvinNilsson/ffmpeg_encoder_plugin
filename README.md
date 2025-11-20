@@ -7,12 +7,15 @@ The plugin supports both CPU encoding and GPU encoding on Linux using VAAPI.
 - H.264
   - X264
   - VAAPI
+  - NVENC
 - H.265
   - X265
   - VAAPI
+  - NVENC
 - AV1
   - SVT-AV1
   - VAAPI
+  - NVENC
 
 ## Installation
 

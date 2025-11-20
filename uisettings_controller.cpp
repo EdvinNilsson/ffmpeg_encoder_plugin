@@ -119,7 +119,9 @@ StatusCode UISettingsController::RenderQuality(HostListRef* settingsList) const 
     {
         HostUIConfigEntryRef item(qpId);
         const char* pLabel = nullptr;
-        if (qp < encoderInfo.qp[2] / 3) {
+        if (encoderInfo.hwAcceleration == Nvenc && qp == 0) {
+            pLabel = "(automatic)";
+        } else if (qp < encoderInfo.qp[2] / 3) {
             pLabel = "(high)";
         } else if (qp < encoderInfo.qp[2] * 2 / 3) {
             pLabel = "(medium)";

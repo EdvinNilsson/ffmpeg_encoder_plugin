@@ -3,10 +3,12 @@
 #include <string>
 
 extern "C" {
-#include "libavutil/avutil.h"
+#include <libavutil/avutil.h>
 }
 
 namespace IOPlugin {
+
+enum HardwareAcceleration { None, Vaapi, Nvenc };
 
 struct EncoderInfo {
     uint8_t UUID[16]{};
@@ -14,7 +16,7 @@ struct EncoderInfo {
     const char* codecName{};
     uint32_t fourCC{};
     const char* encoder{};
-    bool useVaapi{};
+    HardwareAcceleration hwAcceleration{};
     AVPixelFormat pixelFormat{};
     uint32_t colorModel{};
     uint8_t hSubsampling{};

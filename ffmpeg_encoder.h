@@ -6,9 +6,8 @@
 #include "uisettings_controller.h"
 
 extern "C" {
-#include "libavcodec/avcodec.h"
-#include "libavdevice/avdevice.h"
-#include "libavutil/imgutils.h"
+#include <libavcodec/avcodec.h>
+#include <libavutil/imgutils.h>
 }
 
 namespace IOPlugin {
