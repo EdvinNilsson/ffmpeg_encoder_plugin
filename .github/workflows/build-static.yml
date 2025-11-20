@@ -1,0 +1,80 @@
+name: Build FFmpeg Encoder Plugin with Static Linking
+
+on: workflow_dispatch
+
+env:
+  THREADS: 4
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y git build-essential nasm cmake libnuma-dev liblzma-dev libbz2-dev libx265-dev autoconf automake build-essential cmake libass-dev libgnutls28-dev libtool libva-dev meson ninja-build pkg-config yasm zlib1g-dev
+        
+    - name: Build X264
+      run: |
+        mkdir ffmpeg_sources
+        cd ffmpeg_sources
+        git clone --depth 1 https://code.videolan.org/videolan/x264.git
+        cd x264
+        ./configure --prefix="../../ffmpeg" --enable-static --enable-pic
+        make -j ${{env.THREADS}}
+        make install
+        
+    - name: Build X265
+      run: |
+        cd ffmpeg_sources
+        git clone --depth 1 https://bitbucket.org/multicoreware/x265_git.git x265
+        cd x265/build/linux
+        cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="../../../../ffmpeg" -DENABLE_SHARED=off ../../source
+        make -j ${{env.THREADS}}
+        make install
+        
+    - name: Build SVT-AV1
+      run: |
+        cd ffmpeg_sources
+        git clone --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git
+        mkdir -p SVT-AV1/build
+        cd SVT-AV1/build
+        cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="../../../ffmpeg" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF ..
+        make -j ${{env.THREADS}}
+        make install
+        
+    - name: Install nv-codec-headers
+      run: |
+        cd ffmpeg_sources
+        git clone --depth 1 --branch sdk/12.0 https://git.videolan.org/git/ffmpeg/nv-codec-headers.git
+        cd nv-codec-headers
+        make
+        sudo make install
+        
+    - name: Build FFmpeg
+      run: |
+        cd ffmpeg_sources
+        git clone --branch n6.1.3 https://git.ffmpeg.org/ffmpeg.git
+        cd ffmpeg
+        git cherry-pick -n d1ed5c06e3edc5f2b5f3664c80121fa55b0baa95
+        PKG_CONFIG_PATH="../../ffmpeg/lib/pkgconfig" ./configure --prefix="../../ffmpeg" --pkg-config-flags="--static" --extra-cflags="-I../../ffmpeg/include" --extra-ldflags="-L../../ffmpeg/lib" --extra-libs="-lnuma" --arch=amd64 --disable-all --enable-static --enable-avcodec --enable-gpl --enable-encoder=libx264,libx265,h264_vaapi,hevc_vaapi,av1_vaapi,libsvtav1,h264_nvenc,hevc_nvenc,av1_nvenc --enable-libx264 --enable-libx265 --enable-libsvtav1 --enable-nvenc --disable-vdpau
+        make -j ${{env.THREADS}}
+        make install
+        
+    - name: Build FFmpeg Encoder Plugin
+      run: |
+        mkdir build
+        cd build
+        cmake -DCMAKE_BUILD_TYPE=Release ..
+        make -j ${{env.THREADS}}
+
+    - name: Create bundle
+      run: mkdir -p bundle/ffmpeg_encoder_plugin.dvcp.bundle/Contents/Linux-x86-64 && cp build/ffmpeg_encoder_plugin.dvcp bundle/ffmpeg_encoder_plugin.dvcp.bundle/Contents/Linux-x86-64
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: ffmpeg_encoder_plugin.dvcp.bundle
+        path: bundle/
