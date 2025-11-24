@@ -190,10 +190,7 @@ StatusCode FFmpegEncoder::DoOpen(HostBufferRef* p_pBuff) {
     swFrame->width = static_cast<int>(width);
     swFrame->height = static_cast<int>(height);
 
-    if (av_frame_get_buffer(swFrame, 0) < 0) {
-        g_Log(logLevelError, "FFmpeg Plugin :: Failed to allocate frame buffer");
-        return errAlloc;
-    }
+    av_image_fill_linesizes(swFrame->linesize, pixelFormat, static_cast<int>(width));
 
     p_pBuff->SetProperty(pIOPropMagicCookie, propTypeUInt8, ctx->extradata, ctx->extradata_size);
     const uint32_t fourCC = encoderInfo.fourCC == 'avc1' ? 'avcC' : 0;
@@ -243,11 +240,6 @@ StatusCode FFmpegEncoder::DoProcess(HostBufferRef* p_pBuff) {
         char* pBuf = nullptr;
         size_t bufSize = 0;
 
-        if (av_frame_make_writable(swFrame) < 0) {
-            g_Log(logLevelError, "FFmpeg Plugin :: Failed to make the frame writeable");
-            return errFail;
-        }
-
         if (!p_pBuff->LockBuffer(&pBuf, &bufSize)) {
             g_Log(logLevelError, "FFmpeg Plugin :: Failed to lock the buffer");
             return errFail;
@@ -265,8 +257,8 @@ StatusCode FFmpegEncoder::DoProcess(HostBufferRef* p_pBuff) {
             return errNoParam;
         }
 
-        if (av_image_fill_arrays(swFrame->data, swFrame->linesize, reinterpret_cast<uint8_t*>(pBuf), pixelFormat,
-                                 static_cast<int>(width), static_cast<int>(height), 32) < 0) {
+        if (av_image_fill_pointers(swFrame->data, pixelFormat, static_cast<int>(height),
+                                   reinterpret_cast<uint8_t*>(pBuf), swFrame->linesize) < 0) {
             g_Log(logLevelError, "FFmpeg Plugin :: Failed to populate the frame");
             return errFail;
         }
