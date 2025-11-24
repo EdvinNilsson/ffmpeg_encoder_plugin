@@ -25,6 +25,8 @@ The plugin supports both CPU encoding and GPU encoding on Linux using VAAPI.
 
 There is also an AUR package at [davinci-ffmpeg-encoder-plugin](https://aur.archlinux.org/packages/davinci-ffmpeg-encoder-plugin) for Arch Linux and Arch-based distributions.
 
+If the hardware-accelerated VAAPI encoders are missing in Resolve, you may lack the required VAAPI driver for your GPU. Installation instructions can be found on the wikis of [Arch](https://wiki.archlinux.org/title/Hardware_video_acceleration#Installation), [Debian](https://wiki.debian.org/HardwareVideoAcceleration#VA-API), and [Fedora](https://fedoraproject.org/wiki/Hardware_Video_Acceleration#VA-API). The driver installation can be verified by running `vainfo`.
+
 ###  Windows
 - Unzip [ffmpeg_encoder_plugin.dvcp.bundle.zip](https://github.com/EdvinNilsson/ffmpeg_encoder_plugin/releases/latest/download/ffmpeg_encoder_plugin.dvcp.bundle.zip) to `%ProgramData%\Blackmagic Design\DaVinci Resolve\Support\IOPlugins\`.
 
