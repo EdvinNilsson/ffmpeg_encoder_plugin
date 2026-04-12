@@ -97,15 +97,6 @@ StatusCode UISettingsController::RenderQuality(HostListRef* settingsList) const 
         }
     }
 
-    if (encoderInfo.customParamsKey != nullptr) {
-        HostUIConfigEntryRef item(customParamsId);
-        item.MakeTextBox("Encoder Params", customParams, "");
-        if (!item.IsSuccess() || !settingsList->Append(&item)) {
-            g_Log(logLevelError, "FFmpeg Plugin :: Failed to populate custom params UI entry");
-            return errFail;
-        }
-    }
-
     {
         HostUIConfigEntryRef item(qualityModeId);
 
@@ -164,6 +155,24 @@ StatusCode UISettingsController::RenderQuality(HostListRef* settingsList) const 
 
         if (!item.IsSuccess() || !settingsList->Append(&item)) {
             g_Log(logLevelError, "FFmpeg Plugin :: Failed to populate bitrate slider UI entry");
+            return errFail;
+        }
+    }
+
+    if (encoderInfo.customParamsKey != nullptr) {
+        {
+            HostUIConfigEntryRef item("separator");
+            item.MakeSeparator();
+            if (!item.IsSuccess() || !settingsList->Append(&item)) {
+                g_Log(logLevelError, "FFmpeg Plugin :: Failed to populate separator");
+                return errFail;
+            }
+        }
+
+        HostUIConfigEntryRef item(customParamsId);
+        item.MakeTextBox("Encoder Params", customParams, "");
+        if (!item.IsSuccess() || !settingsList->Append(&item)) {
+            g_Log(logLevelError, "FFmpeg Plugin :: Failed to populate custom params UI entry");
             return errFail;
         }
     }

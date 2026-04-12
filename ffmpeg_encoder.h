@@ -22,7 +22,7 @@ class FFmpegEncoder : public IPluginCodecRef {
     static StatusCode GetEncoderSettings(HostPropertyCollectionRef* values, HostListRef* settingsList,
                                          const EncoderInfo& encoderInfo);
     StatusCode DoOpen(HostBufferRef* p_pBuff) override;
-    virtual void ApplyOptions(AVCodecContext* ctx, UISettingsController& settings);
+    virtual StatusCode ApplyOptions(AVCodecContext* ctx, UISettingsController& settings, HostBufferRef* p_pBuff);
     StatusCode DoProcess(HostBufferRef* p_pBuff) override;
     void DoFlush() override;
 

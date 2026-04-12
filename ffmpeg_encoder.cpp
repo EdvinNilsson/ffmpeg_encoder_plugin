@@ -1,6 +1,7 @@
 #include "ffmpeg_encoder.h"
 
 extern "C" {
+#include <libavutil/log.h>
 #include <libavutil/opt.h>
 #include <libswscale/swscale.h>
 }
@@ -154,7 +155,7 @@ StatusCode FFmpegEncoder::DoOpen(HostBufferRef* p_pBuff) {
     ctx->color_trc = static_cast<AVColorTransferCharacteristic>(transferFunction);
     ctx->color_range = dataRange == 1 ? AVCOL_RANGE_JPEG : AVCOL_RANGE_MPEG;
 
-    ApplyOptions(ctx, *settings);
+    if (const StatusCode err = ApplyOptions(ctx, *settings, p_pBuff); err != errNone) return err;
 
     if (useVaapi) {
         int err = av_hwdevice_ctx_create(&hwDeviceCtx, AV_HWDEVICE_TYPE_VAAPI, nullptr, nullptr, 0);
@@ -192,9 +193,45 @@ StatusCode FFmpegEncoder::DoOpen(HostBufferRef* p_pBuff) {
         av_buffer_unref(&hwFramesRef);
     }
 
-    if (avcodec_open2(ctx, codec, nullptr) < 0) {
+    thread_local std::string logs;
+    logs.clear();
+
+    auto logCallback = [](void* ptr, int level, const char* fmt, va_list vl) {
+        if (level <= AV_LOG_WARNING) {
+            if (!strcmp(fmt, "Invalid value for %s: %s.\n") || !strcmp(fmt, "Error parsing option '%s = %s'.\n") ||
+                !strcmp(fmt, "Error parsing option %s: %s.\n") || !strcmp(fmt, "Unknown option: %s.\n") ||
+                level <= AV_LOG_ERROR) {
+                va_list vl_copy;
+                va_copy(vl_copy, vl);
+
+                char line[1024];
+                vsnprintf(line, sizeof(line), fmt, vl_copy);
+                logs += line;
+
+                va_end(vl_copy);
+            }
+        }
+        av_log_default_callback(ptr, level, fmt, vl);
+    };
+
+    av_log_set_callback(logCallback);
+
+    const int ret = avcodec_open2(ctx, codec, nullptr);
+
+    av_log_set_callback(av_log_default_callback);
+
+    if (ret < 0) {
         g_Log(logLevelError, "FFmpeg Plugin :: Failed to open encoder context");
+        if (!logs.empty()) {
+            p_pBuff->SetProperty(pIOCustomErrorString, propTypeString, logs.c_str(), static_cast<int>(logs.size()));
+        }
         return errNoCodec;
+    }
+
+    if (!logs.empty()) {
+        g_Log(logLevelError, "FFmpeg Plugin :: Invalid custom encoder params");
+        p_pBuff->SetProperty(pIOCustomErrorString, propTypeString, logs.c_str(), static_cast<int>(logs.size()));
+        return errInvalidParam;
     }
 
     pkt = av_packet_alloc();
@@ -216,7 +253,7 @@ StatusCode FFmpegEncoder::DoOpen(HostBufferRef* p_pBuff) {
     return errNone;
 }
 
-void FFmpegEncoder::ApplyOptions(AVCodecContext* ctx, UISettingsController& settings) {
+StatusCode FFmpegEncoder::ApplyOptions(AVCodecContext* ctx, UISettingsController& settings, HostBufferRef* p_pBuff) {
     switch (settings.GetQualityMode()) {
         case CQP:
             if (useVaapi) {
@@ -245,8 +282,16 @@ void FFmpegEncoder::ApplyOptions(AVCodecContext* ctx, UISettingsController& sett
     }
 
     if (encoderInfo.customParamsKey != nullptr && !settings.GetCustomParams().empty()) {
-        av_opt_set(ctx->priv_data, encoderInfo.customParamsKey, settings.GetCustomParams().c_str(), 0);
+        if (av_opt_set(ctx->priv_data, encoderInfo.customParamsKey, settings.GetCustomParams().c_str(), 0) < 0) {
+            const std::string msg =
+                "Invalid format for encoder params (" + std::string(encoderInfo.customParamsKey) + ").";
+            g_Log(logLevelError, "FFmpeg Plugin :: %s", msg.c_str());
+            p_pBuff->SetProperty(pIOCustomErrorString, propTypeString, msg.c_str(), static_cast<int>(msg.size()));
+            return errInvalidParam;
+        }
     }
+
+    return errNone;
 }
 
 StatusCode FFmpegEncoder::DoProcess(HostBufferRef* p_pBuff) {
