@@ -123,6 +123,22 @@ namespace IOPlugin
         p_Val = *static_cast<const int64_t*>(pVal);
         return true;
     }
+
+    bool IPropertyProvider::GetINT16(PropertyID p_ID, int16_t& p_Val)
+    {
+        PropertyType type = propTypeNull;
+        const void* pVal = NULL;
+        int numVals = 0;
+        const StatusCode err = GetProperty(p_ID, &type, &pVal, &numVals);
+        if ((err != errNone) || (type != propTypeInt16) || (numVals != 1))
+        {
+            return false;
+        }
+
+        p_Val = *static_cast<const int16_t*>(pVal);
+        return true;
+    }
+
     bool IPropertyProvider::GetDouble(PropertyID p_ID, double& p_Val)
     {
         PropertyType type = propTypeNull;

@@ -28,48 +28,57 @@ StatusCode g_HandleGetInfo(HostPropertyCollectionRef* p_pProps) {
 }
 
 StatusCode g_HandleCreateObj(unsigned char* p_pUUID, ObjectRef* p_ppObj) {
-    if (memcmp(p_pUUID, H264Encoder::encoderInfo.UUID, 16) == 0) {
-        *p_ppObj = new H264Encoder();
+    if (memcmp(p_pUUID, H264Encoder::encoderInfo.UUID, 15) == 0) {
+        const uint8_t formatIndex = p_pUUID[15] - H264Encoder::encoderInfo.UUID[15];
+        *p_ppObj = new H264Encoder(formatIndex);
         return errNone;
     }
 
-    if (memcmp(p_pUUID, X264Encoder::encoderInfo.UUID, 16) == 0) {
-        *p_ppObj = new X264Encoder();
+    if (memcmp(p_pUUID, X264Encoder::encoderInfo.UUID, 15) == 0) {
+        const uint8_t formatIndex = p_pUUID[15] - X264Encoder::encoderInfo.UUID[15];
+        *p_ppObj = new X264Encoder(formatIndex);
         return errNone;
     }
 
-    if (memcmp(p_pUUID, H264NvencEncoder::encoderInfo.UUID, 16) == 0) {
-        *p_ppObj = new H264NvencEncoder();
+    if (memcmp(p_pUUID, H264NvencEncoder::encoderInfo.UUID, 15) == 0) {
+        const uint8_t formatIndex = p_pUUID[15] - H264NvencEncoder::encoderInfo.UUID[15];
+        *p_ppObj = new H264NvencEncoder(formatIndex);
         return errNone;
     }
 
-    if (memcmp(p_pUUID, H265Encoder::encoderInfo.UUID, 16) == 0) {
-        *p_ppObj = new H265Encoder();
+    if (memcmp(p_pUUID, H265Encoder::encoderInfo.UUID, 15) == 0) {
+        const uint8_t formatIndex = p_pUUID[15] - H265Encoder::encoderInfo.UUID[15];
+        *p_ppObj = new H265Encoder(formatIndex);
         return errNone;
     }
 
-    if (memcmp(p_pUUID, X265Encoder::encoderInfo.UUID, 16) == 0) {
-        *p_ppObj = new X265Encoder();
+    if (memcmp(p_pUUID, X265Encoder::encoderInfo.UUID, 15) == 0) {
+        const uint8_t formatIndex = p_pUUID[15] - X265Encoder::encoderInfo.UUID[15];
+        *p_ppObj = new X265Encoder(formatIndex);
         return errNone;
     }
 
-    if (memcmp(p_pUUID, H265NvencEncoder::encoderInfo.UUID, 16) == 0) {
-        *p_ppObj = new H265NvencEncoder();
+    if (memcmp(p_pUUID, H265NvencEncoder::encoderInfo.UUID, 15) == 0) {
+        const uint8_t formatIndex = p_pUUID[15] - H265NvencEncoder::encoderInfo.UUID[15];
+        *p_ppObj = new H265NvencEncoder(formatIndex);
         return errNone;
     }
 
-    if (memcmp(p_pUUID, Av1Encoder::encoderInfo.UUID, 16) == 0) {
-        *p_ppObj = new Av1Encoder();
+    if (memcmp(p_pUUID, Av1Encoder::encoderInfo.UUID, 15) == 0) {
+        const uint8_t formatIndex = p_pUUID[15] - Av1Encoder::encoderInfo.UUID[15];
+        *p_ppObj = new Av1Encoder(formatIndex);
         return errNone;
     }
 
-    if (memcmp(p_pUUID, SvtAv1Encoder::encoderInfo.UUID, 16) == 0) {
-        *p_ppObj = new SvtAv1Encoder();
+    if (memcmp(p_pUUID, SvtAv1Encoder::encoderInfo.UUID, 15) == 0) {
+        const uint8_t formatIndex = p_pUUID[15] - SvtAv1Encoder::encoderInfo.UUID[15];
+        *p_ppObj = new SvtAv1Encoder(formatIndex);
         return errNone;
     }
 
-    if (memcmp(p_pUUID, Av1NvencEncoder::encoderInfo.UUID, 16) == 0) {
-        *p_ppObj = new Av1NvencEncoder();
+    if (memcmp(p_pUUID, Av1NvencEncoder::encoderInfo.UUID, 15) == 0) {
+        const uint8_t formatIndex = p_pUUID[15] - Av1NvencEncoder::encoderInfo.UUID[15];
+        *p_ppObj = new Av1NvencEncoder(formatIndex);
         return errNone;
     }
 
@@ -115,39 +124,39 @@ StatusCode g_ListContainers(HostListRef* p_pList) { return errNone; }
 
 StatusCode g_GetEncoderSettings(unsigned char* p_pUUID, HostPropertyCollectionRef* p_pValues,
                                 HostListRef* p_pSettingsList) {
-    if (memcmp(p_pUUID, H264Encoder::encoderInfo.UUID, 16) == 0) {
+    if (memcmp(p_pUUID, H264Encoder::encoderInfo.UUID, 15) == 0) {
         return H264Encoder::GetEncoderSettings(p_pValues, p_pSettingsList);
     }
 
-    if (memcmp(p_pUUID, X264Encoder::encoderInfo.UUID, 16) == 0) {
+    if (memcmp(p_pUUID, X264Encoder::encoderInfo.UUID, 15) == 0) {
         return X264Encoder::GetEncoderSettings(p_pValues, p_pSettingsList);
     }
 
-    if (memcmp(p_pUUID, H264NvencEncoder::encoderInfo.UUID, 16) == 0) {
+    if (memcmp(p_pUUID, H264NvencEncoder::encoderInfo.UUID, 15) == 0) {
         return H264NvencEncoder::GetEncoderSettings(p_pValues, p_pSettingsList);
     }
 
-    if (memcmp(p_pUUID, H265Encoder::encoderInfo.UUID, 16) == 0) {
+    if (memcmp(p_pUUID, H265Encoder::encoderInfo.UUID, 15) == 0) {
         return H265Encoder::GetEncoderSettings(p_pValues, p_pSettingsList);
     }
 
-    if (memcmp(p_pUUID, X265Encoder::encoderInfo.UUID, 16) == 0) {
+    if (memcmp(p_pUUID, X265Encoder::encoderInfo.UUID, 15) == 0) {
         return X265Encoder::GetEncoderSettings(p_pValues, p_pSettingsList);
     }
 
-    if (memcmp(p_pUUID, H265NvencEncoder::encoderInfo.UUID, 16) == 0) {
+    if (memcmp(p_pUUID, H265NvencEncoder::encoderInfo.UUID, 15) == 0) {
         return H265NvencEncoder::GetEncoderSettings(p_pValues, p_pSettingsList);
     }
 
-    if (memcmp(p_pUUID, Av1Encoder::encoderInfo.UUID, 16) == 0) {
+    if (memcmp(p_pUUID, Av1Encoder::encoderInfo.UUID, 15) == 0) {
         return Av1Encoder::GetEncoderSettings(p_pValues, p_pSettingsList);
     }
 
-    if (memcmp(p_pUUID, SvtAv1Encoder::encoderInfo.UUID, 16) == 0) {
+    if (memcmp(p_pUUID, SvtAv1Encoder::encoderInfo.UUID, 15) == 0) {
         return SvtAv1Encoder::GetEncoderSettings(p_pValues, p_pSettingsList);
     }
 
-    if (memcmp(p_pUUID, Av1NvencEncoder::encoderInfo.UUID, 16) == 0) {
+    if (memcmp(p_pUUID, Av1NvencEncoder::encoderInfo.UUID, 15) == 0) {
         return Av1NvencEncoder::GetEncoderSettings(p_pValues, p_pSettingsList);
     }
 

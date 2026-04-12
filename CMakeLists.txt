@@ -15,6 +15,7 @@ endif ()
 find_path(FFMPEG_INCLUDE_DIR libavcodec/avcodec.h HINTS "${FFMPEG_DIR}/include")
 find_library(AVCODEC_LIBRARY avcodec HINTS "${FFMPEG_DIR}/lib")
 find_library(AVUTIL_LIBRARY avutil HINTS "${FFMPEG_DIR}/lib")
+find_library(SWSCALE_LIBRARY swscale HINTS "${FFMPEG_DIR}/lib")
 
 get_filename_component(AVCODEC_EXT "${AVCODEC_LIBRARY}" EXT)
 if (AVCODEC_EXT STREQUAL ".a")
@@ -70,7 +71,7 @@ else ()
     target_link_options(${PROJECT_NAME} PRIVATE -dynamiclib)
 endif ()
 
-target_link_libraries(${PROJECT_NAME} PRIVATE host_plugin ${AVCODEC_LIBRARY} ${AVUTIL_LIBRARY})
+target_link_libraries(${PROJECT_NAME} PRIVATE host_plugin ${AVCODEC_LIBRARY} ${AVUTIL_LIBRARY} ${SWSCALE_LIBRARY})
 
 if (FFMPEG_IS_STATIC)
     target_link_libraries(${PROJECT_NAME} PRIVATE ${X264_LIBRARY} ${X265_LIBRARY} ${SVTAV1_LIBRARY} numa va va-drm va-x11 X11)

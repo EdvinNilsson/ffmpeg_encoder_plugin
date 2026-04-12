@@ -8,7 +8,7 @@ class Av1NvencEncoder final : public FFmpegEncoder {
    public:
     static const EncoderInfo encoderInfo;
 
-    Av1NvencEncoder();
+    explicit Av1NvencEncoder(int formatIndex);
 
     static StatusCode RegisterCodecs(HostListRef* list);
     static StatusCode GetEncoderSettings(HostPropertyCollectionRef* values, HostListRef* settingsList);

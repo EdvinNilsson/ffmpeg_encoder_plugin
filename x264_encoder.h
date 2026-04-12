@@ -8,7 +8,7 @@ class X264Encoder final : public FFmpegEncoder {
    public:
     static const EncoderInfo encoderInfo;
 
-    X264Encoder();
+    explicit X264Encoder(int formatIndex);
 
     static StatusCode RegisterCodecs(HostListRef* list);
     static StatusCode GetEncoderSettings(HostPropertyCollectionRef* values, HostListRef* settingsList);

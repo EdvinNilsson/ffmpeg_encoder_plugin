@@ -8,7 +8,7 @@ class SvtAv1Encoder final : public FFmpegEncoder {
    public:
     static const EncoderInfo encoderInfo;
 
-    SvtAv1Encoder();
+    explicit SvtAv1Encoder(int formatIndex);
 
     static StatusCode RegisterCodecs(HostListRef* list);
     static StatusCode GetEncoderSettings(HostPropertyCollectionRef* values, HostListRef* settingsList);

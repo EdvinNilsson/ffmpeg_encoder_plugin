@@ -8,7 +8,7 @@ class H265NvencEncoder final : public FFmpegEncoder {
    public:
     static const EncoderInfo encoderInfo;
 
-    H265NvencEncoder();
+    explicit H265NvencEncoder(int formatIndex);
 
     static StatusCode RegisterCodecs(HostListRef* list);
     static StatusCode GetEncoderSettings(HostPropertyCollectionRef* values, HostListRef* settingsList);

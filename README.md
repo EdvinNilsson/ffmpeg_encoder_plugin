@@ -21,7 +21,6 @@ The plugin supports both CPU encoding and GPU encoding on Linux using VAAPI.
 
 ### Linux
 - Unzip [ffmpeg_encoder_plugin.dvcp.bundle.zip](https://github.com/EdvinNilsson/ffmpeg_encoder_plugin/releases/latest/download/ffmpeg_encoder_plugin.dvcp.bundle.zip) to `/opt/resolve/IOPlugins/`.
-- Install FFmpeg using the package manager (e.g. `sudo apt install ffmpeg`, `sudo pacman -S ffmpeg`).
 
 There is also an AUR package at [davinci-ffmpeg-encoder-plugin](https://aur.archlinux.org/packages/davinci-ffmpeg-encoder-plugin) for Arch Linux and Arch-based distributions.
 
@@ -65,7 +64,7 @@ make
 #### Building the plugin
 - Extract the downloaded `ffmpeg-release-full-shared.7z` to the project root, and rename the folder to `ffmpeg`.
 - Open the project in Visual Studio 2022 and select Build > Build ffmpeg_encoder_plugin.dvcp.
-- Copy `ffmpeg_encoder_plugin.dvcp` from `.\out\build`, and `avcodec-61.dll`, `avutil-59.dll` and `swresample-5.dll` from `.\ffmpeg\bin` to `%ProgramData%\Blackmagic Design\DaVinci Resolve\Support\IOPlugins\ffmpeg_encoder_plugin.dvcp.bundle\Contents\Win64\`.
+- Copy `ffmpeg_encoder_plugin.dvcp` from `.\out\build`, and the dll files for `avcodec`, `avutil`, `swresample` and `swscale` from `.\ffmpeg\bin` to `%ProgramData%\Blackmagic Design\DaVinci Resolve\Support\IOPlugins\ffmpeg_encoder_plugin.dvcp.bundle\Contents\Win64\`.
 
 ### Mac
 

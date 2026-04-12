@@ -3,14 +3,9 @@
 const EncoderInfo X264Encoder::encoderInfo = {
     .UUID{0x10, 0x33, 0x0b, 0xa7, 0x8e, 0xf2, 0x9c, 0xc6, 0x19, 0xa3, 0x56, 0xa7, 0x8a, 0xa5, 0x17, 0xc8},
     .codecGroup = "H.264",
-    .codecName = "X264 (FFmpeg)",
     .fourCC = 'avc1',
     .encoder = "libx264",
     .hwAcceleration = None,
-    .pixelFormat = AV_PIX_FMT_NV12,
-    .colorModel = clrNV12,
-    .hSubsampling = 2,
-    .vSubsampling = 2,
     .qualityModes = CQP | CRF | VBR,
     .qp = {0, 23, 51},
     .presets =
@@ -27,9 +22,67 @@ const EncoderInfo X264Encoder::encoderInfo = {
         },
     .defaultPreset = 5,
     .customParamsKey = "x264-params",
+    .formats =
+        {
+            {
+                .codecName = "X264 8-bit 4:2:0 (FFmpeg)",
+                .bitDepth = 8,
+                .colorModel = clrNV12,
+                .hSubsampling = 2,
+                .vSubsampling = 2,
+                .pixelFormat = AV_PIX_FMT_NV12,
+            },
+            {
+                .codecName = "X264 10-bit 4:2:0 (FFmpeg)",
+                .bitDepth = 10,
+                .colorModel = clrNV12,
+                .hSubsampling = 2,
+                .vSubsampling = 2,
+                .pixelFormat = AV_PIX_FMT_YUV420P10LE,
+                .srcPixelFormat = AV_PIX_FMT_P010,
+            },
+            {
+                .codecName = "X264 8-bit 4:2:2 (FFmpeg)",
+                .bitDepth = 8,
+                .colorModel = clrYUVp,
+                .hSubsampling = 1,
+                .vSubsampling = 1,
+                .pixelFormat = AV_PIX_FMT_YUV422P,
+                .srcPixelFormat = AV_PIX_FMT_YUV444P,
+            },
+            {
+                .codecName = "X264 10-bit 4:2:2 (FFmpeg)",
+                .bitDepth = 16,
+                .colorModel = clrYUVp,
+                .hSubsampling = 1,
+                .vSubsampling = 1,
+                .pixelFormat = AV_PIX_FMT_YUV422P10LE,
+                .srcPixelFormat = AV_PIX_FMT_YUV444P16LE,
+            },
+            {
+                .codecName = "X264 8-bit 4:4:4 (FFmpeg)",
+                .bitDepth = 8,
+                .colorModel = clrYUVp,
+                .hSubsampling = 1,
+                .vSubsampling = 1,
+                .pixelFormat = AV_PIX_FMT_YUV444P,
+            },
+            {
+                .codecName = "X264 10-bit 4:4:4 (FFmpeg)",
+                .bitDepth = 16,
+                .colorModel = clrYUVp,
+                .hSubsampling = 1,
+                .vSubsampling = 1,
+                .pixelFormat = AV_PIX_FMT_YUV444P10LE,
+                .srcPixelFormat = AV_PIX_FMT_YUV444P16LE,
+            },
+        },
 };
 
-X264Encoder::X264Encoder() { FFmpegEncoder::encoderInfo = encoderInfo; }
+X264Encoder::X264Encoder(const int formatIndex) {
+    FFmpegEncoder::encoderInfo = encoderInfo;
+    FFmpegEncoder::formatIndex = formatIndex;
+}
 
 StatusCode X264Encoder::RegisterCodecs(HostListRef* list) { return FFmpegEncoder::RegisterCodecs(list, encoderInfo); }
 

@@ -61,6 +61,7 @@ namespace IOPlugin
         bool GetUINT32(PropertyID p_ID, uint32_t& p_Val);
         bool GetUINT8(PropertyID p_ID, uint8_t& p_Val);
         bool GetINT64(PropertyID p_ID, int64_t& p_Val);
+        bool GetINT16(PropertyID p_ID, int16_t& p_Val);
         bool GetDouble(PropertyID p_ID, double& p_Val);
         bool GetString(PropertyID p_ID, std::string& p_Str);
     };

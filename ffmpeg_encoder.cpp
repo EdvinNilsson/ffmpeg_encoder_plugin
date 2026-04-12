@@ -2,6 +2,7 @@
 
 extern "C" {
 #include <libavutil/opt.h>
+#include <libswscale/swscale.h>
 }
 
 #undef av_err2str
@@ -14,72 +15,76 @@ av_always_inline std::string av_err2string(int errnum) {
 StatusCode FFmpegEncoder::DoInit(HostPropertyCollectionRef* p_pProps) { return errNone; }
 
 StatusCode FFmpegEncoder::RegisterCodecs(HostListRef* list, const EncoderInfo& encoderInfo) {
-    HostPropertyCollectionRef codecInfo;
-    if (!codecInfo.IsValid()) {
-        return errAlloc;
-    }
+    for (int i = 0; i < static_cast<int>(encoderInfo.formats.size()); ++i) {
+        const EncoderFormat& format = encoderInfo.formats[i];
 
-    if (!IsEncoderSupported(encoderInfo)) {
-        g_Log(logLevelWarn, "FFmpeg Plugin :: Encoder '%s' is not supported", encoderInfo.encoder);
-        return errNone;
-    }
-
-    codecInfo.SetProperty(pIOPropUUID, propTypeUInt8, encoderInfo.UUID, 16);
-
-    const char* pCodecGroup = encoderInfo.codecGroup;
-    codecInfo.SetProperty(pIOPropGroup, propTypeString, pCodecGroup, static_cast<int>(strlen(pCodecGroup)));
-
-    const char* pCodecName = encoderInfo.codecName;
-    codecInfo.SetProperty(pIOPropName, propTypeString, pCodecName, static_cast<int>(strlen(pCodecName)));
-
-    codecInfo.SetProperty(pIOPropFourCC, propTypeUInt32, &encoderInfo.fourCC, 1);
-
-    uint32_t vMediaVideo = mediaVideo;
-    codecInfo.SetProperty(pIOPropMediaType, propTypeUInt32, &vMediaVideo, 1);
-
-    uint32_t vDirection = dirEncode;
-    codecInfo.SetProperty(pIOPropCodecDirection, propTypeUInt32, &vDirection, 1);
-
-    uint32_t vColorModel = encoderInfo.colorModel;
-    codecInfo.SetProperty(pIOPropColorModel, propTypeUInt32, &vColorModel, 1);
-    codecInfo.SetProperty(pIOPropHSubsampling, propTypeUInt8, &encoderInfo.hSubsampling, 1);
-    codecInfo.SetProperty(pIOPropVSubsampling, propTypeUInt8, &encoderInfo.vSubsampling, 1);
-
-    std::vector<uint8_t> dataRangeVec;
-    dataRangeVec.push_back(0);
-    dataRangeVec.push_back(1);
-    codecInfo.SetProperty(pIOPropDataRange, propTypeUInt8, dataRangeVec.data(), static_cast<int>(dataRangeVec.size()));
-
-    int val = 8;
-    codecInfo.SetProperty(pIOPropBitDepth, propTypeUInt32, &val, 1);
-    codecInfo.SetProperty(pIOPropBitsPerSample, propTypeUInt32, &val, 1);
-
-    uint32_t temp = 0;
-    codecInfo.SetProperty(pIOPropTemporalReordering, propTypeUInt32, &temp, 1);
-
-    uint8_t fieldSupport = fieldProgressive | fieldTop | fieldBottom;
-    codecInfo.SetProperty(pIOPropFieldOrder, propTypeUInt8, &fieldSupport, 1);
-
-    uint8_t threadSafe = 1;
-    codecInfo.SetProperty(pIOPropThreadSafe, propTypeUInt8, &threadSafe, 1);
-
-    bool hwAcc = encoderInfo.hwAcceleration != None;
-    codecInfo.SetProperty(pIOPropHWAcc, propTypeUInt8, &hwAcc, 1);
-
-    const std::vector<std::string> containerVec = {"mov", "mp4", "mkv"};
-    std::string valStrings;
-    for (size_t i = 0; i < containerVec.size(); ++i) {
-        valStrings.append(containerVec[i]);
-        if (i < containerVec.size() - 1) {
-            valStrings.append(1, '\0');
+        HostPropertyCollectionRef codecInfo;
+        if (!codecInfo.IsValid()) {
+            return errAlloc;
         }
-    }
 
-    codecInfo.SetProperty(pIOPropContainerList, propTypeString, valStrings.c_str(),
-                          static_cast<int>(valStrings.size()));
+        if (!IsEncoderSupported(encoderInfo, i)) {
+            g_Log(logLevelWarn, "FFmpeg Plugin :: Encoder '%s' is not supported with format '%s'", encoderInfo.encoder,
+                  av_get_pix_fmt_name(format.pixelFormat));
+            continue;
+        }
 
-    if (!list->Append(&codecInfo)) {
-        return errFail;
+        uint8_t uuid[16];
+        memcpy(uuid, encoderInfo.UUID, sizeof(uuid));
+        uuid[15] += i;
+        codecInfo.SetProperty(pIOPropUUID, propTypeUInt8, uuid, 16);
+
+        const char* codecGroup = encoderInfo.codecGroup;
+        codecInfo.SetProperty(pIOPropGroup, propTypeString, codecGroup, static_cast<int>(strlen(codecGroup)));
+
+        const char* codecName = format.codecName;
+        codecInfo.SetProperty(pIOPropName, propTypeString, codecName, static_cast<int>(strlen(codecName)));
+
+        codecInfo.SetProperty(pIOPropFourCC, propTypeUInt32, &encoderInfo.fourCC, 1);
+
+        constexpr uint32_t vMediaVideo = mediaVideo;
+        codecInfo.SetProperty(pIOPropMediaType, propTypeUInt32, &vMediaVideo, 1);
+
+        constexpr uint32_t vDirection = dirEncode;
+        codecInfo.SetProperty(pIOPropCodecDirection, propTypeUInt32, &vDirection, 1);
+
+        codecInfo.SetProperty(pIOPropColorModel, propTypeUInt32, &format.colorModel, 1);
+        codecInfo.SetProperty(pIOPropHSubsampling, propTypeUInt8, &format.hSubsampling, 1);
+        codecInfo.SetProperty(pIOPropVSubsampling, propTypeUInt8, &format.vSubsampling, 1);
+
+        constexpr uint8_t dataRange[] = {0, 1};
+        codecInfo.SetProperty(pIOPropDataRange, propTypeUInt8, &dataRange, sizeof(dataRange));
+
+        codecInfo.SetProperty(pIOPropBitDepth, propTypeUInt32, &format.bitDepth, 1);
+        codecInfo.SetProperty(pIOPropBitsPerSample, propTypeUInt32, &format.bitDepth, 1);
+
+        constexpr uint32_t temp = 0;
+        codecInfo.SetProperty(pIOPropTemporalReordering, propTypeUInt32, &temp, 1);
+
+        constexpr uint8_t fieldSupport = fieldProgressive | fieldTop | fieldBottom;
+        codecInfo.SetProperty(pIOPropFieldOrder, propTypeUInt8, &fieldSupport, 1);
+
+        constexpr uint8_t threadSafe = 1;
+        codecInfo.SetProperty(pIOPropThreadSafe, propTypeUInt8, &threadSafe, 1);
+
+        const bool hwAcc = encoderInfo.hwAcceleration != None;
+        codecInfo.SetProperty(pIOPropHWAcc, propTypeUInt8, &hwAcc, 1);
+
+        const std::vector<std::string> containerVec = {"mov", "mp4", "mkv"};
+        std::string valStrings;
+        for (size_t j = 0; j < containerVec.size(); ++j) {
+            valStrings.append(containerVec[j]);
+            if (j < containerVec.size() - 1) {
+                valStrings.append(1, '\0');
+            }
+        }
+
+        codecInfo.SetProperty(pIOPropContainerList, propTypeString, valStrings.c_str(),
+                              static_cast<int>(valStrings.size()));
+
+        if (!list->Append(&codecInfo)) {
+            return errFail;
+        }
     }
 
     return errNone;
@@ -102,22 +107,27 @@ StatusCode FFmpegEncoder::DoOpen(HostBufferRef* p_pBuff) {
     settings = std::make_unique<UISettingsController>(commonProps, encoderInfo);
     settings->Load(p_pBuff);
 
-    int16_t colorMatrix = 1;
-    int16_t colorPrimaries = 1;
-    int16_t transferFunction = 1;
+    int16_t colorMatrix{};
+    int16_t colorPrimaries{};
+    int16_t transferFunction{};
+    uint8_t dataRange{};
 
-    p_pBuff->SetProperty(pIOColorMatrix, propTypeInt16, &colorMatrix, 1);
-    p_pBuff->SetProperty(pIOPropColorPrimaries, propTypeInt16, &colorPrimaries, 1);
-    p_pBuff->SetProperty(pIOTransferCharacteristics, propTypeInt16, &transferFunction, 1);
+    if (!p_pBuff->GetINT16(pIOColorMatrix, colorMatrix)) return errNoParam;
+    if (!p_pBuff->GetINT16(pIOPropColorPrimaries, colorPrimaries)) return errNoParam;
+    if (!p_pBuff->GetINT16(pIOTransferCharacteristics, transferFunction)) return errNoParam;
+    if (!p_pBuff->GetUINT8(pIOPropDataRange, dataRange)) return errNoParam;
 
-    uint8_t isMultiPass = 0;
+    constexpr uint8_t isMultiPass = 0;
     p_pBuff->SetProperty(pIOPropMultiPass, propTypeUInt8, &isMultiPass, 1);
+
+    const EncoderFormat& format = encoderInfo.formats[formatIndex];
 
     width = commonProps.GetWidth();
     height = commonProps.GetHeight();
     frameRateNum = commonProps.GetFrameRateNum();
     frameRateDen = commonProps.GetFrameRateDen();
-    pixelFormat = encoderInfo.pixelFormat;
+    pixelFormat = format.pixelFormat;
+    srcPixelFormat = format.srcPixelFormat;
     useVaapi = encoderInfo.hwAcceleration == Vaapi;
 
     const AVCodec* codec = avcodec_find_encoder_by_name(encoderInfo.encoder);
@@ -139,6 +149,10 @@ StatusCode FFmpegEncoder::DoOpen(HostBufferRef* p_pBuff) {
     ctx->framerate = {static_cast<int>(frameRateNum), static_cast<int>(frameRateDen)};
     ctx->thread_count = 0;
     ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+    ctx->colorspace = static_cast<AVColorSpace>(colorMatrix);
+    ctx->color_primaries = static_cast<AVColorPrimaries>(colorPrimaries);
+    ctx->color_trc = static_cast<AVColorTransferCharacteristic>(transferFunction);
+    ctx->color_range = dataRange == 1 ? AVCOL_RANGE_JPEG : AVCOL_RANGE_MPEG;
 
     ApplyOptions(ctx, *settings);
 
@@ -261,10 +275,50 @@ StatusCode FFmpegEncoder::DoProcess(HostBufferRef* p_pBuff) {
             return errNoParam;
         }
 
-        if (av_image_fill_pointers(swFrame->data, pixelFormat, static_cast<int>(height),
-                                   reinterpret_cast<uint8_t*>(pBuf), swFrame->linesize) < 0) {
-            g_Log(logLevelError, "FFmpeg Plugin :: Failed to populate the frame");
-            return errFail;
+        if (srcPixelFormat != AV_PIX_FMT_NONE) {
+            AVFrame* src = av_frame_alloc();
+            if (src == nullptr) return errAlloc;
+
+            src->width = static_cast<int>(width);
+            src->height = static_cast<int>(height);
+
+            if (av_image_fill_linesizes(src->linesize, srcPixelFormat, src->width) < 0) {
+                g_Log(logLevelError, "FFmpeg Plugin :: Failed to fill linesizes");
+                av_frame_free(&src);
+                return errFail;
+            }
+
+            if (av_image_fill_pointers(src->data, srcPixelFormat, src->height, reinterpret_cast<uint8_t*>(pBuf),
+                                       src->linesize) < 0) {
+                g_Log(logLevelError, "FFmpeg Plugin :: Failed to populate the frame");
+                av_frame_free(&src);
+                return errFail;
+            }
+
+            av_frame_unref(swFrame);
+            swFrame->format = pixelFormat;
+            swFrame->width = src->width;
+            swFrame->height = src->height;
+
+            if (av_frame_get_buffer(swFrame, 32) < 0) {
+                g_Log(logLevelError, "FFmpeg Plugin :: Failed to access the frame buffer");
+                av_frame_free(&src);
+                return errFail;
+            }
+
+            SwsContext* const sws = sws_getContext(src->width, src->height, srcPixelFormat, src->width, src->height,
+                                                   pixelFormat, SWS_FAST_BILINEAR, nullptr, nullptr, nullptr);
+
+            sws_scale(sws, src->data, src->linesize, 0, src->height, swFrame->data, swFrame->linesize);
+
+            sws_freeContext(sws);
+            av_frame_free(&src);
+        } else {
+            if (av_image_fill_pointers(swFrame->data, pixelFormat, static_cast<int>(height),
+                                       reinterpret_cast<uint8_t*>(pBuf), swFrame->linesize) < 0) {
+                g_Log(logLevelError, "FFmpeg Plugin :: Failed to populate the frame");
+                return errFail;
+            }
         }
 
         int64_t pts;
@@ -363,7 +417,7 @@ StatusCode FFmpegEncoder::DoProcess(HostBufferRef* p_pBuff) {
 
 void FFmpegEncoder::DoFlush() { DoProcess(nullptr); }
 
-bool FFmpegEncoder::IsEncoderSupported(const EncoderInfo& encoderInfo) {
+bool FFmpegEncoder::IsEncoderSupported(const EncoderInfo& encoderInfo, const int formatIndex) {
     bool isEncoderSupported = false;
 
     const int logLevel = av_log_get_level();
@@ -374,18 +428,33 @@ bool FFmpegEncoder::IsEncoderSupported(const EncoderInfo& encoderInfo) {
     AVBufferRef* hwDeviceCtx = nullptr;
     AVHWFramesContext* framesCtx = nullptr;
 
+    const AVPixelFormat pixelFormat = encoderInfo.formats[formatIndex].pixelFormat;
+
     const AVCodec* codec = avcodec_find_encoder_by_name(encoderInfo.encoder);
     if (!codec) goto end;
 
     if (encoderInfo.hwAcceleration == None) {
-        isEncoderSupported = true;
+        const void* configs = nullptr;
+        int numConfigs;
+        avcodec_get_supported_config(nullptr, codec, AV_CODEC_CONFIG_PIX_FORMAT, 0, &configs, &numConfigs);
+        if (configs) {
+            const auto* pixFmts = static_cast<const AVPixelFormat*>(configs);
+            for (int i = 0; i < numConfigs; ++i) {
+                if (pixFmts[i] == pixelFormat) {
+                    isEncoderSupported = true;
+                    break;
+                }
+            }
+        } else {
+            isEncoderSupported = true;
+        }
         goto end;
     }
 
     ctx = avcodec_alloc_context3(codec);
     if (!ctx) goto end;
 
-    ctx->pix_fmt = encoderInfo.hwAcceleration == Vaapi ? AV_PIX_FMT_VAAPI : encoderInfo.pixelFormat;
+    ctx->pix_fmt = encoderInfo.hwAcceleration == Vaapi ? AV_PIX_FMT_VAAPI : pixelFormat;
     ctx->time_base = {25, 1};
     ctx->width = 1920;
     ctx->height = 1080;
@@ -396,7 +465,7 @@ bool FFmpegEncoder::IsEncoderSupported(const EncoderInfo& encoderInfo) {
 
         framesCtx = reinterpret_cast<AVHWFramesContext*>(hwFramesRef->data);
         framesCtx->format = AV_PIX_FMT_VAAPI;
-        framesCtx->sw_format = AV_PIX_FMT_NV12;
+        framesCtx->sw_format = pixelFormat;
         framesCtx->width = ctx->width;
         framesCtx->height = ctx->height;
         if (av_hwframe_ctx_init(hwFramesRef) < 0) goto end;

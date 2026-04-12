@@ -27,10 +27,11 @@ class FFmpegEncoder : public IPluginCodecRef {
     void DoFlush() override;
 
     EncoderInfo encoderInfo{};
+    int formatIndex{};
     HostCodecConfigCommon commonProps{};
 
    private:
-    static bool IsEncoderSupported(const EncoderInfo& encoderInfo);
+    static bool IsEncoderSupported(const EncoderInfo& encoderInfo, int formatIndex);
 
     std::unique_ptr<UISettingsController> settings{};
 
@@ -39,6 +40,7 @@ class FFmpegEncoder : public IPluginCodecRef {
     uint32_t frameRateDen{};
     uint32_t frameRateNum{};
     AVPixelFormat pixelFormat{};
+    AVPixelFormat srcPixelFormat{};
     bool useVaapi{};
 
     AVCodecContext* ctx{};
