@@ -324,6 +324,7 @@ StatusCode FFmpegEncoder::DoProcess(HostBufferRef* p_pBuff) {
             AVFrame* src = av_frame_alloc();
             if (src == nullptr) return errAlloc;
 
+            src->format = srcPixelFormat;
             src->width = static_cast<int>(width);
             src->height = static_cast<int>(height);
 
@@ -352,7 +353,7 @@ StatusCode FFmpegEncoder::DoProcess(HostBufferRef* p_pBuff) {
             }
 
             SwsContext* const sws = sws_getContext(src->width, src->height, srcPixelFormat, src->width, src->height,
-                                                   pixelFormat, SWS_FAST_BILINEAR, nullptr, nullptr, nullptr);
+                                                   pixelFormat, SWS_BILINEAR, nullptr, nullptr, nullptr);
 
             sws_scale(sws, src->data, src->linesize, 0, src->height, swFrame->data, swFrame->linesize);
 
