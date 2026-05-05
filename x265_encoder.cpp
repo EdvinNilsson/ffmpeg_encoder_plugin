@@ -25,7 +25,7 @@ const EncoderInfo X265Encoder::encoderInfo = {
     .formats =
         {
             {
-                .codecName = "X265 8-bit 4:2:0 (FFmpeg)",
+                .codecName = "x265 8-bit 4:2:0 (FFmpeg)",
                 .bitDepth = 8,
                 .colorModel = clrYUVp,
                 .hSubsampling = 2,
@@ -33,7 +33,7 @@ const EncoderInfo X265Encoder::encoderInfo = {
                 .pixelFormat = AV_PIX_FMT_YUV420P,
             },
             {
-                .codecName = "X265 10-bit 4:2:0 (FFmpeg)",
+                .codecName = "x265 10-bit 4:2:0 (FFmpeg)",
                 .bitDepth = 10,
                 .colorModel = clrNV12,
                 .hSubsampling = 2,
@@ -42,25 +42,25 @@ const EncoderInfo X265Encoder::encoderInfo = {
                 .srcPixelFormat = AV_PIX_FMT_P010,
             },
             {
-                .codecName = "X265 8-bit 4:2:2 (FFmpeg)",
+                .codecName = "x265 8-bit 4:2:2 (FFmpeg)",
                 .bitDepth = 8,
-                .colorModel = clrYUVp,
-                .hSubsampling = 1,
+                .colorModel = clrUYVY,
+                .hSubsampling = 2,
                 .vSubsampling = 1,
                 .pixelFormat = AV_PIX_FMT_YUV422P,
-                .srcPixelFormat = AV_PIX_FMT_YUV444P,
+                .srcPixelFormat = AV_PIX_FMT_UYVY422,
             },
             {
-                .codecName = "X265 10-bit 4:2:2 (FFmpeg)",
+                .codecName = "x265 10-bit 4:2:2 (FFmpeg)",
                 .bitDepth = 16,
                 .colorModel = clrYUVp,
-                .hSubsampling = 1,
+                .hSubsampling = 2,
                 .vSubsampling = 1,
                 .pixelFormat = AV_PIX_FMT_YUV422P10LE,
-                .srcPixelFormat = AV_PIX_FMT_YUV444P16LE,
+                .srcPixelFormat = AV_PIX_FMT_YUV422P16LE,
             },
             {
-                .codecName = "X265 8-bit 4:4:4 (FFmpeg)",
+                .codecName = "x265 8-bit 4:4:4 (FFmpeg)",
                 .bitDepth = 8,
                 .colorModel = clrYUVp,
                 .hSubsampling = 1,
@@ -68,7 +68,7 @@ const EncoderInfo X265Encoder::encoderInfo = {
                 .pixelFormat = AV_PIX_FMT_YUV444P,
             },
             {
-                .codecName = "X265 10-bit 4:4:4 (FFmpeg)",
+                .codecName = "x265 10-bit 4:4:4 (FFmpeg)",
                 .bitDepth = 16,
                 .colorModel = clrYUVp,
                 .hSubsampling = 1,
