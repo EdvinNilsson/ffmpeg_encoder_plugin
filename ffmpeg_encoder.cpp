@@ -123,8 +123,8 @@ StatusCode FFmpegEncoder::DoOpen(HostBufferRef* p_pBuff) {
 
     const EncoderFormat& format = encoderInfo.formats[formatIndex];
 
-    width = commonProps.GetWidth();
-    height = commonProps.GetHeight();
+    width = static_cast<int>(commonProps.GetWidth());
+    height = static_cast<int>(commonProps.GetHeight());
     frameRateNum = commonProps.GetFrameRateNum();
     frameRateDen = commonProps.GetFrameRateDen();
     pixelFormat = format.pixelFormat;
@@ -144,8 +144,8 @@ StatusCode FFmpegEncoder::DoOpen(HostBufferRef* p_pBuff) {
     }
 
     ctx->pix_fmt = useVaapi ? AV_PIX_FMT_VAAPI : pixelFormat;
-    ctx->width = static_cast<int>(width);
-    ctx->height = static_cast<int>(height);
+    ctx->width = width;
+    ctx->height = height;
     ctx->time_base = {static_cast<int>(frameRateDen), static_cast<int>(frameRateNum)};
     ctx->framerate = {static_cast<int>(frameRateNum), static_cast<int>(frameRateDen)};
     ctx->thread_count = 0;
@@ -176,8 +176,8 @@ StatusCode FFmpegEncoder::DoOpen(HostBufferRef* p_pBuff) {
         framesCtx = reinterpret_cast<AVHWFramesContext*>(hwFramesRef->data);
         framesCtx->format = AV_PIX_FMT_VAAPI;
         framesCtx->sw_format = pixelFormat;
-        framesCtx->width = static_cast<int>(width);
-        framesCtx->height = static_cast<int>(height);
+        framesCtx->width = width;
+        framesCtx->height = height;
         framesCtx->initial_pool_size = 20;
         if ((err = av_hwframe_ctx_init(hwFramesRef)) < 0) {
             g_Log(logLevelError, "FFmpeg Plugin :: Failed to initialize VAAPI frame context. %s", av_err2str(err));
@@ -238,10 +238,15 @@ StatusCode FFmpegEncoder::DoOpen(HostBufferRef* p_pBuff) {
 
     swFrame = av_frame_alloc();
     swFrame->format = pixelFormat;
-    swFrame->width = static_cast<int>(width);
-    swFrame->height = static_cast<int>(height);
+    swFrame->width = width;
+    swFrame->height = height;
 
-    av_image_fill_linesizes(swFrame->linesize, pixelFormat, static_cast<int>(width));
+    av_image_fill_linesizes(swFrame->linesize, pixelFormat, width);
+
+    if (srcPixelFormat != AV_PIX_FMT_NONE) {
+        swsCtx =
+            sws_getContext(width, height, srcPixelFormat, width, height, pixelFormat, 0, nullptr, nullptr, nullptr);
+    }
 
     p_pBuff->SetProperty(pIOPropMagicCookie, propTypeUInt8, ctx->extradata, ctx->extradata_size);
     const uint32_t fourCC = encoderInfo.fourCC == 'avc1' ? 'avcC' : 0;
@@ -352,12 +357,8 @@ StatusCode FFmpegEncoder::DoProcess(HostBufferRef* p_pBuff) {
                 return errFail;
             }
 
-            SwsContext* const sws = sws_getContext(src->width, src->height, srcPixelFormat, src->width, src->height,
-                                                   pixelFormat, SWS_BILINEAR, nullptr, nullptr, nullptr);
+            sws_scale(swsCtx, src->data, src->linesize, 0, src->height, swFrame->data, swFrame->linesize);
 
-            sws_scale(sws, src->data, src->linesize, 0, src->height, swFrame->data, swFrame->linesize);
-
-            sws_freeContext(sws);
             av_frame_free(&src);
         } else {
             if (av_image_fill_pointers(swFrame->data, pixelFormat, static_cast<int>(height),
@@ -539,6 +540,7 @@ FFmpegEncoder::FFmpegEncoder() = default;
 FFmpegEncoder::~FFmpegEncoder() {
     if (ctx != nullptr) avcodec_free_context(&ctx);
     if (hwDeviceCtx != nullptr) av_buffer_unref(&hwDeviceCtx);
+    if (swsCtx != nullptr) sws_freeContext(swsCtx);
     if (pkt != nullptr) av_packet_free(&pkt);
     if (swFrame != nullptr) av_frame_free(&swFrame);
 }
