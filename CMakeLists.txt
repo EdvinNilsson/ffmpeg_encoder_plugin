@@ -62,6 +62,8 @@ add_subdirectory(${WRAPPER_DIR})
 
 add_library(${PROJECT_NAME} SHARED ${SRCS} ${HEADERS})
 
+target_compile_definitions(${PROJECT_NAME} PRIVATE __STDC_CONSTANT_MACROS)
+
 set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "")
 set_target_properties(${PROJECT_NAME} PROPERTIES SUFFIX ".dvcp")
 
