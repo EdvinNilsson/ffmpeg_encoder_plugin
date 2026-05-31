@@ -26,11 +26,15 @@ There is also an AUR package at [davinci-ffmpeg-encoder-plugin](https://aur.arch
 
 If the hardware-accelerated VAAPI encoders are missing in Resolve, you may lack the required VAAPI driver for your GPU. Installation instructions can be found on the wikis of [Arch](https://wiki.archlinux.org/title/Hardware_video_acceleration#Installation), [Debian](https://wiki.debian.org/HardwareVideoAcceleration#VA-API), and [Fedora](https://fedoraproject.org/wiki/Hardware_Video_Acceleration#VA-API). The driver installation can be verified by running `vainfo`.
 
-###  Windows
+### Windows
 - Unzip [ffmpeg_encoder_plugin.dvcp.bundle.zip](https://github.com/EdvinNilsson/ffmpeg_encoder_plugin/releases/latest/download/ffmpeg_encoder_plugin.dvcp.bundle.zip) to `%ProgramData%\Blackmagic Design\DaVinci Resolve\Support\IOPlugins\`.
 
 ### Mac
-See build instructions below.
+- Unzip [ffmpeg_encoder_plugin.dvcp.bundle.zip](https://github.com/EdvinNilsson/ffmpeg_encoder_plugin/releases/latest/download/ffmpeg_encoder_plugin.dvcp.bundle.zip)
+- Run `xattr -rd com.apple.quarantine ffmpeg_encoder_plugin.dvcp.bundle`. This is necessary because the binary is not notarized by Apple and without this step, macOS will refuse to load the plugin and say that it is damaged.
+- Move ffmpeg_encoder_plugin.dvcp.bundle to the following directory depending on the installation method of DaVinci Resolve.
+  - Standalone: `/Library/Application Support/Blackmagic Design/DaVinci Resolve/IOPlugins/`
+  - Mac App Store: `~/Library/Containers/com.blackmagic-design.DaVinciResolveAppStore/Data/Library/Application Support/IOPlugins/`
 
 ## Build instructions
 

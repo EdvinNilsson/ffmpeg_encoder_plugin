@@ -2,121 +2,286 @@ name: Build FFmpeg Encoder Plugin with Static Linking
 
 on: workflow_dispatch
 
+env:
+  X265_VERSION: 4.2
+  SVT_AV1_VERSION: v4.1.0
+  FFMPEG_VERSION: n8.1.1
+
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        include:
+          - target: linux
+            runs-on: ubuntu-22.04
+            cc: gcc-12
+            cxx: g++-12
+            arch: x86_64
+            bundle_target: Linux-x86-64
+            extra_packages: >
+              gcc-12 g++-12 libnuma-dev liblzma-dev libbz2-dev libass-dev libgnutls28-dev libva-dev zlib1g-dev
+
+          - target: windows
+            runs-on: ubuntu-22.04
+            cc: x86_64-w64-mingw32-gcc
+            cxx: x86_64-w64-mingw32-g++
+            host: x86_64-w64-mingw32
+            arch: x86_64
+            bundle_target: Win64
+            extra_packages: >
+              mingw-w64 gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 pkg-config-mingw-w64-x86-64
+
+          - target: macos-intel
+            runs-on: macos-26-intel
+            cc: clang
+            cxx: clang++
+            arch: x86_64
+            bundle_target: MacOS-x86-64
+
+          - target: macos-arm64
+            runs-on: macos-26
+            cc: clang
+            cxx: clang++
+            arch: arm64
+            bundle_target: MacOS
+    
+    runs-on: ${{ matrix.runs-on }}
+    
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+      HOST: ${{ matrix.host }}
+      PREFIX: ${{ github.workspace }}/ffmpeg
+      ARCH: ${{ matrix.arch }}
+      EXTRA_CMAKE_ARGS: >-
+        -DCMAKE_C_COMPILER=${{ matrix.cc }}
+        -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
+        -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/ffmpeg
+        ${{ matrix.target == 'windows' && '-DCMAKE_SYSTEM_NAME=Windows' || '' }}
+        ${{ startsWith(matrix.target, 'macos') && format('-DCMAKE_OSX_ARCHITECTURES={0}', matrix.arch) || '' }}
 
     steps:
-    - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
-    - name: Dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y git build-essential nasm cmake libnuma-dev liblzma-dev libbz2-dev libx265-dev autoconf \
-          automake build-essential cmake libass-dev libgnutls28-dev libtool libva-dev meson ninja-build pkg-config \
-          yasm zlib1g-dev
-        
-    - name: Build X264
-      run: |
-        mkdir ffmpeg_sources
-        cd ffmpeg_sources
-        git clone --depth 1 https://code.videolan.org/videolan/x264.git
-        cd x264
-        ./configure --prefix="../../ffmpeg" --enable-static --enable-pic
-        make -j ${nproc}
-        make install
-        
-    - name: Build X265
-      run: |
-        cd ffmpeg_sources
-        git clone --depth 1 https://bitbucket.org/multicoreware/x265_git.git x265
-        cd x265/build/linux
-        
-        mkdir 10bit && cd 10bit
-        cmake ../../../source \
-          -DHIGH_BIT_DEPTH=ON \
-          -DEXPORT_C_API=OFF \
-          -DENABLE_SHARED=OFF \
-          -DENABLE_CLI=OFF
-        cmake --build . -j ${nproc}
-        cd ..
-        
-        ln -sf 10bit/libx265.a libx265_main10.a
-        cmake ../../source \
-          -DCMAKE_INSTALL_PREFIX="../../../../ffmpeg" \
-          -DENABLE_SHARED=off -DEXTRA_LINK_FLAGS=-L. \
-          -DEXTRA_LIB="x265_main10.a" \
-          -DLINKED_10BIT=ON 
-        cmake --build . -j ${nproc}
-        
-        mv libx265.a libx265_main.a
-        ar -M <<EOF
-        CREATE libx265.a
-        ADDLIB libx265_main.a
-        ADDLIB libx265_main10.a
-        SAVE
-        END
-        EOF
-        
-        cmake --install .
-        
-    - name: Build SVT-AV1
-      run: |
-        cd ffmpeg_sources
-        git clone --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git
-        mkdir -p SVT-AV1/build
-        cd SVT-AV1/build
-        cmake -DCMAKE_INSTALL_PREFIX="../../../ffmpeg" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF ..
-        cmake --build . -j ${nproc}
-        cmake --install .
-        
-    - name: Install nv-codec-headers
-      run: |
-        cd ffmpeg_sources
-        git clone --depth 1 --branch sdk/12.0 https://git.videolan.org/git/ffmpeg/nv-codec-headers.git
-        cd nv-codec-headers
-        make
-        sudo make install
-        
-    - name: Build FFmpeg
-      run: |
-        cd ffmpeg_sources
-        git clone --branch n8.1 https://git.ffmpeg.org/ffmpeg.git
-        cd ffmpeg
-        PKG_CONFIG_PATH="../../ffmpeg/lib/pkgconfig" ./configure \
-          --prefix="../../ffmpeg" \
-          --pkg-config-flags="--static" \
-          --extra-cflags="-I../../ffmpeg/include" \
-          --extra-ldflags="-L../../ffmpeg/lib" \
-          --extra-libs="-lnuma" \
-          --arch=amd64 \
-          --disable-all \
-          --enable-static \
-          --enable-avcodec \
-          --enable-swscale \
-          --enable-gpl \
-          --enable-encoder=libx264,libx265,h264_vaapi,hevc_vaapi,av1_vaapi,libsvtav1,h264_nvenc,hevc_nvenc,av1_nvenc \
-          --enable-libx264 \
-          --enable-libx265 \
-          --enable-libsvtav1 \
-          --enable-nvenc \
-          --disable-vdpau
-        make -j ${nproc}
-        make install
-        
-    - name: Build FFmpeg Encoder Plugin
-      run: |
-        mkdir build
-        cd build
-        cmake -DCMAKE_BUILD_TYPE=Release ..
-        cmake --build . -j ${nproc}
+      - name: Dependencies
+        run: |
+          if [[ "${{ matrix.target }}" == macos* ]]; then
+            brew install --quiet \
+              cmake meson ninja nasm yasm pkg-config \
+              autoconf automake libtool coreutils
+          else
+            sudo apt update
+            sudo apt install -y \
+              git build-essential nasm yasm cmake pkg-config \
+              autoconf automake libtool meson ninja-build \
+              ${{ matrix.extra_packages }}
+          fi
 
-    - name: Create bundle
-      run: |
-        mkdir -p bundle/ffmpeg_encoder_plugin.dvcp.bundle/Contents/Linux-x86-64
-        cp build/ffmpeg_encoder_plugin.dvcp bundle/ffmpeg_encoder_plugin.dvcp.bundle/Contents/Linux-x86-64
+      - name: Build x264
+        run: |
+          mkdir ffmpeg_sources && cd ffmpeg_sources
+          git clone --depth 1 https://code.videolan.org/videolan/x264.git
+          cd x264
+          
+          EXTRA_ARGS=""
+          if [ "${{ matrix.target }}" = "windows" ]; then
+            EXTRA_ARGS="--host=$HOST --cross-prefix=$HOST-"
+          fi
+          
+          if [[ "${{ matrix.target }}" == macos* ]]; then
+            export CFLAGS="-arch $ARCH"
+            export CXXFLAGS="-arch $ARCH"
+            export LDFLAGS="-arch $ARCH"
+          fi
+          
+          ./configure \
+            --cc=$CC \
+            --cxx=$CXX \
+            --prefix=$PREFIX \
+            --enable-static \
+            --enable-pic \
+            $EXTRA_ARGS
+          
+          make -j $(nproc)
+          make install
 
-    - uses: actions/upload-artifact@v4
-      with:
-        name: ffmpeg_encoder_plugin.dvcp.bundle
-        path: bundle/
+      - name: Build x265
+        run: |
+          cd ffmpeg_sources
+          git clone --depth 1 --branch ${{env.X265_VERSION}} https://bitbucket.org/multicoreware/x265_git.git x265
+          cd x265/build/linux
+          
+          mkdir 10bit && cd 10bit
+          cmake ../../../source \
+            $EXTRA_CMAKE_ARGS \
+            -DHIGH_BIT_DEPTH=ON \
+            -DEXPORT_C_API=OFF \
+            -DENABLE_SHARED=OFF \
+            -DENABLE_CLI=OFF
+          cmake --build . -j $(nproc)
+          cd ..
+          
+          ln -sf 10bit/libx265.a libx265_main10.a
+          cmake ../../source \
+            $EXTRA_CMAKE_ARGS \
+            -DENABLE_SHARED=off -DEXTRA_LINK_FLAGS=-L. \
+            -DEXTRA_LIB="x265_main10.a" \
+            -DLINKED_10BIT=ON 
+          cmake --build . -j $(nproc)
+          
+          mv libx265.a libx265_main.a
+          
+          if [[ "${{ matrix.target }}" == macos* ]]; then
+            libtool -static -o libx265.a libx265_main.a libx265_main10.a
+          else
+            printf '%s\n' \
+            'CREATE libx265.a' \
+            'ADDLIB libx265_main.a' \
+            'ADDLIB libx265_main10.a' \
+            'SAVE' \
+            'END' | ar -M
+          fi
+          
+          cmake --install .
+
+      - name: Build SVT-AV1
+        run: |
+          cd ffmpeg_sources
+          git clone --depth 1 --branch ${{env.SVT_AV1_VERSION}} https://gitlab.com/AOMediaCodec/SVT-AV1.git
+          mkdir -p SVT-AV1/build && cd SVT-AV1/build
+          
+          cmake .. \
+            $EXTRA_CMAKE_ARGS \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF
+          
+          cmake --build . -j $(nproc)
+          cmake --install .
+
+      - name: Install nv-codec-headers
+        if: ${{ !startsWith(matrix.target, 'macos') }}
+        run: |
+          cd ffmpeg_sources
+          git clone --depth 1 --branch sdk/12.0 https://git.videolan.org/git/ffmpeg/nv-codec-headers.git
+          cd nv-codec-headers
+          make
+          make install PREFIX=$PREFIX
+
+      - name: Build FFmpeg
+        run: |
+          cd ffmpeg_sources
+          git clone --branch ${{env.FFMPEG_VERSION}} https://git.ffmpeg.org/ffmpeg.git
+          cd ffmpeg
+          
+          EXTRA_ARGS=""
+          if [ "${{ matrix.target }}" = "linux" ]; then
+            EXTRA_ARGS='--enable-nvenc --extra-libs="-lnuma"'
+          elif [ "${{ matrix.target }}" = "windows" ]; then
+            EXTRA_ARGS="--enable-nvenc --target-os=mingw32 --cross-prefix=$HOST-"
+          elif [[ "${{ matrix.target }}" == macos* ]]; then
+            EXTRA_ARGS='--cc=clang --cxx=clang++ --ld=clang++ --disable-videotoolbox --disable-avfoundation --disable-coreimage'
+            export CFLAGS="-arch $ARCH"
+            export CXXFLAGS="-arch $ARCH"
+            export LDFLAGS="-arch $ARCH"
+          fi
+          
+          export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig
+          
+          ./configure \
+            $EXTRA_ARGS \
+            --cc=$CC \
+            --cxx=$CXX \
+            --prefix=$PREFIX \
+            --pkg-config-flags="--static" \
+            --extra-cflags="-I$PREFIX/include" \
+            --extra-ldflags="-L$PREFIX/lib" \
+            --arch=$ARCH \
+            --disable-all \
+            --enable-static \
+            --enable-avcodec \
+            --enable-gpl \
+            --enable-encoder=libx264,libx265,h264_vaapi,hevc_vaapi,av1_vaapi,libsvtav1,h264_nvenc,hevc_nvenc,av1_nvenc \
+            --enable-libx264 \
+            --enable-libx265 \
+            --enable-libsvtav1 \
+            --disable-vdpau
+          
+          make -j $(nproc)
+          make install
+
+      - name: Build FFmpeg Encoder Plugin
+        run: |
+          mkdir build
+          cd build
+          cmake .. \
+            $EXTRA_CMAKE_ARGS \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build . -j $(nproc)
+
+      - name: Upload binary
+        run: |
+          mkdir -p bundle/ffmpeg_encoder_plugin.dvcp.bundle/Contents/${{ matrix.bundle_target }}
+          cp build/ffmpeg_encoder_plugin.dvcp bundle/ffmpeg_encoder_plugin.dvcp.bundle/Contents/${{ matrix.bundle_target }}
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ffmpeg_encoder_plugin-${{ matrix.target }}
+          path: bundle
+          retention-days: 1
+  
+  macos-universal:
+    needs: build
+
+    runs-on: macos-26
+
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: ffmpeg_encoder_plugin-macos-intel
+          path: intel
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: ffmpeg_encoder_plugin-macos-arm64
+          path: arm64
+
+      - name: Create universal binary
+        run: |
+          mkdir -p bundle/ffmpeg_encoder_plugin.dvcp.bundle/Contents/MacOS
+
+          lipo -create \
+            intel/ffmpeg_encoder_plugin.dvcp.bundle/Contents/MacOS-x86-64/ffmpeg_encoder_plugin.dvcp \
+            arm64/ffmpeg_encoder_plugin.dvcp.bundle/Contents/MacOS/ffmpeg_encoder_plugin.dvcp \
+            -output bundle/ffmpeg_encoder_plugin.dvcp.bundle/Contents/MacOS/ffmpeg_encoder_plugin.dvcp
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ffmpeg_encoder_plugin-macos-universal
+          path: bundle
+          retention-days: 1
+  
+  bundle:
+    needs: [ build, macos-universal ]
+    
+    runs-on: ubuntu-22.04
+    
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: ffmpeg_encoder_plugin-linux
+          path: bundle
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: ffmpeg_encoder_plugin-windows
+          path: bundle
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: ffmpeg_encoder_plugin-macos-universal
+          path: bundle
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ffmpeg_encoder_plugin.dvcp.bundle
+          path: bundle
