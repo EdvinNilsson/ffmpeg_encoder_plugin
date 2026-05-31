@@ -481,6 +481,7 @@ bool FFmpegEncoder::IsEncoderSupported(const EncoderInfo& encoderInfo, const int
     if (!codec) goto end;
 
     if (encoderInfo.hwAcceleration == None) {
+#if LIBAVCODEC_VERSION_MAJOR >= 61
         const void* configs = nullptr;
         int numConfigs;
         avcodec_get_supported_config(nullptr, codec, AV_CODEC_CONFIG_PIX_FORMAT, 0, &configs, &numConfigs);
@@ -495,6 +496,18 @@ bool FFmpegEncoder::IsEncoderSupported(const EncoderInfo& encoderInfo, const int
         } else {
             isEncoderSupported = true;
         }
+#else
+        if (codec->pix_fmts) {
+            for (const AVPixelFormat* p = codec->pix_fmts; *p != AV_PIX_FMT_NONE; ++p) {
+                if (*p == pixelFormat) {
+                    isEncoderSupported = true;
+                    break;
+                }
+            }
+        } else {
+            isEncoderSupported = true;
+        }
+#endif
         goto end;
     }
 
