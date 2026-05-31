@@ -43,7 +43,7 @@ const EncoderInfo SvtAv1Encoder::encoderInfo = {
                 .hSubsampling = 2,
                 .vSubsampling = 2,
                 .pixelFormat = AV_PIX_FMT_YUV420P10LE,
-                .srcPixelFormat = AV_PIX_FMT_P010,
+                .pixelFormatRepacker = convertP010ToYUV420P10,
             },
         },
 };

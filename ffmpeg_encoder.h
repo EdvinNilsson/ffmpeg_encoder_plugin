@@ -8,7 +8,6 @@
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavutil/imgutils.h>
-#include <libswscale/swscale.h>
 }
 
 namespace IOPlugin {
@@ -43,10 +42,10 @@ class FFmpegEncoder : public IPluginCodecRef {
     AVPixelFormat pixelFormat{};
     AVPixelFormat srcPixelFormat{};
     bool useVaapi{};
+    PixelFormatRepacker* pixelFormatConverter{};
 
     AVCodecContext* ctx{};
     AVBufferRef* hwDeviceCtx{};
-    SwsContext* swsCtx{};
     AVPacket* pkt{};
     AVFrame* swFrame{};
 };

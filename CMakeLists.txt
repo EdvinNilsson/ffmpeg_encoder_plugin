@@ -4,7 +4,7 @@ project(ffmpeg_encoder_plugin)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(BASE_DIR "${CMAKE_SOURCE_DIR}")
+set(BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(FFMPEG_DIR "${BASE_DIR}/ffmpeg")
 set(WRAPPER_DIR "${BASE_DIR}/wrapper")
 
@@ -15,7 +15,6 @@ endif ()
 find_path(FFMPEG_INCLUDE_DIR libavcodec/avcodec.h HINTS "${FFMPEG_DIR}/include")
 find_library(AVCODEC_LIBRARY avcodec HINTS "${FFMPEG_DIR}/lib")
 find_library(AVUTIL_LIBRARY avutil HINTS "${FFMPEG_DIR}/lib")
-find_library(SWSCALE_LIBRARY swscale HINTS "${FFMPEG_DIR}/lib")
 
 get_filename_component(AVCODEC_EXT "${AVCODEC_LIBRARY}" EXT)
 if (AVCODEC_EXT STREQUAL ".a")
@@ -36,6 +35,7 @@ set(SRCS
         h264_nvenc_encoder.cpp
         h265_encoder.cpp
         h265_nvenc_encoder.cpp
+        pixel_format_repacker.cpp
         plugin.cpp
         svt_av1_encoder.cpp
         uisettings_controller.cpp
@@ -51,6 +51,7 @@ set(HEADERS
         h264_nvenc_encoder.h
         h265_encoder.h
         h265_nvenc_encoder.h
+        pixel_format_repacker.h
         plugin.h
         svt_av1_encoder.h
         uisettings_controller.h
@@ -73,7 +74,7 @@ else ()
     target_link_options(${PROJECT_NAME} PRIVATE -dynamiclib)
 endif ()
 
-target_link_libraries(${PROJECT_NAME} PRIVATE host_plugin ${AVCODEC_LIBRARY} ${AVUTIL_LIBRARY} ${SWSCALE_LIBRARY})
+target_link_libraries(${PROJECT_NAME} PRIVATE host_plugin ${AVCODEC_LIBRARY} ${AVUTIL_LIBRARY})
 
 if (FFMPEG_IS_STATIC)
     target_link_libraries(${PROJECT_NAME} PRIVATE ${X264_LIBRARY} ${X265_LIBRARY} ${SVTAV1_LIBRARY} numa va va-drm va-x11 X11)

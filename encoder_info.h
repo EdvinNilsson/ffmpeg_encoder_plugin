@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 
+#include "pixel_format_repacker.h"
+
 extern "C" {
 #include <libavutil/avutil.h>
 }
@@ -19,6 +21,7 @@ struct EncoderFormat {
     uint8_t vSubsampling{};
     AVPixelFormat pixelFormat{};
     AVPixelFormat srcPixelFormat{AV_PIX_FMT_NONE};
+    PixelFormatRepacker* pixelFormatRepacker{};
 };
 
 struct EncoderInfo {

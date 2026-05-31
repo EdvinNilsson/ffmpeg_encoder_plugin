@@ -3,7 +3,6 @@
 extern "C" {
 #include <libavutil/log.h>
 #include <libavutil/opt.h>
-#include <libswscale/swscale.h>
 }
 
 #undef av_err2str
@@ -130,6 +129,7 @@ StatusCode FFmpegEncoder::DoOpen(HostBufferRef* p_pBuff) {
     pixelFormat = format.pixelFormat;
     srcPixelFormat = format.srcPixelFormat;
     useVaapi = encoderInfo.hwAcceleration == Vaapi;
+    pixelFormatConverter = format.pixelFormatRepacker;
 
     const AVCodec* codec = avcodec_find_encoder_by_name(encoderInfo.encoder);
     if (!codec) {
@@ -243,11 +243,6 @@ StatusCode FFmpegEncoder::DoOpen(HostBufferRef* p_pBuff) {
 
     av_image_fill_linesizes(swFrame->linesize, pixelFormat, width);
 
-    if (srcPixelFormat != AV_PIX_FMT_NONE) {
-        swsCtx =
-            sws_getContext(width, height, srcPixelFormat, width, height, pixelFormat, 0, nullptr, nullptr, nullptr);
-    }
-
     p_pBuff->SetProperty(pIOPropMagicCookie, propTypeUInt8, ctx->extradata, ctx->extradata_size);
     const uint32_t fourCC = encoderInfo.fourCC == 'avc1' ? 'avcC' : 0;
     p_pBuff->SetProperty(pIOPropMagicCookieType, propTypeUInt32, &fourCC, 1);
@@ -319,50 +314,21 @@ StatusCode FFmpegEncoder::DoProcess(HostBufferRef* p_pBuff) {
             return errUnsupported;
         }
 
-        uint32_t width, height;
-        if (!p_pBuff->GetUINT32(pIOPropWidth, width) || !p_pBuff->GetUINT32(pIOPropHeight, height)) {
-            g_Log(logLevelError, "FFmpeg Plugin :: Width/height not set when encoding the frame");
-            return errNoParam;
-        }
-
-        if (srcPixelFormat != AV_PIX_FMT_NONE) {
-            AVFrame* src = av_frame_alloc();
-            if (src == nullptr) return errAlloc;
-
-            src->format = srcPixelFormat;
-            src->width = static_cast<int>(width);
-            src->height = static_cast<int>(height);
-
-            if (av_image_fill_linesizes(src->linesize, srcPixelFormat, src->width) < 0) {
-                g_Log(logLevelError, "FFmpeg Plugin :: Failed to fill linesizes");
-                av_frame_free(&src);
-                return errFail;
-            }
-
-            if (av_image_fill_pointers(src->data, srcPixelFormat, src->height, reinterpret_cast<uint8_t*>(pBuf),
-                                       src->linesize) < 0) {
-                g_Log(logLevelError, "FFmpeg Plugin :: Failed to populate the frame");
-                av_frame_free(&src);
-                return errFail;
-            }
-
+        if (pixelFormatConverter) {
             av_frame_unref(swFrame);
             swFrame->format = pixelFormat;
-            swFrame->width = src->width;
-            swFrame->height = src->height;
+            swFrame->width = width;
+            swFrame->height = height;
 
             if (av_frame_get_buffer(swFrame, 32) < 0) {
                 g_Log(logLevelError, "FFmpeg Plugin :: Failed to access the frame buffer");
-                av_frame_free(&src);
                 return errFail;
             }
 
-            sws_scale(swsCtx, src->data, src->linesize, 0, src->height, swFrame->data, swFrame->linesize);
-
-            av_frame_free(&src);
+            pixelFormatConverter(pBuf, swFrame, width, height);
         } else {
-            if (av_image_fill_pointers(swFrame->data, pixelFormat, static_cast<int>(height),
-                                       reinterpret_cast<uint8_t*>(pBuf), swFrame->linesize) < 0) {
+            if (av_image_fill_pointers(swFrame->data, pixelFormat, height, reinterpret_cast<uint8_t*>(pBuf),
+                                       swFrame->linesize) < 0) {
                 g_Log(logLevelError, "FFmpeg Plugin :: Failed to populate the frame");
                 return errFail;
             }
@@ -553,7 +519,6 @@ FFmpegEncoder::FFmpegEncoder() = default;
 FFmpegEncoder::~FFmpegEncoder() {
     if (ctx != nullptr) avcodec_free_context(&ctx);
     if (hwDeviceCtx != nullptr) av_buffer_unref(&hwDeviceCtx);
-    if (swsCtx != nullptr) sws_freeContext(swsCtx);
     if (pkt != nullptr) av_packet_free(&pkt);
     if (swFrame != nullptr) av_frame_free(&swFrame);
 }

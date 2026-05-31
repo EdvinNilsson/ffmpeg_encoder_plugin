@@ -64,7 +64,7 @@ make
 #### Building the plugin
 - Extract the downloaded `ffmpeg-release-full-shared.7z` to the project root, and rename the folder to `ffmpeg`.
 - Open the project in Visual Studio 2022 and select Build > Build ffmpeg_encoder_plugin.dvcp.
-- Copy `ffmpeg_encoder_plugin.dvcp` from `.\out\build`, and the dll files for `avcodec`, `avutil`, `swresample` and `swscale` from `.\ffmpeg\bin` to `%ProgramData%\Blackmagic Design\DaVinci Resolve\Support\IOPlugins\ffmpeg_encoder_plugin.dvcp.bundle\Contents\Win64\`.
+- Copy `ffmpeg_encoder_plugin.dvcp` from `.\out\build`, and the dll files for `avcodec`, `avutil` and `swresample` from `.\ffmpeg\bin` to `%ProgramData%\Blackmagic Design\DaVinci Resolve\Support\IOPlugins\ffmpeg_encoder_plugin.dvcp.bundle\Contents\Win64\`.
 
 ### Mac
 
