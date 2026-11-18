@@ -518,6 +518,9 @@ bool FFmpegEncoder::IsEncoderSupported(const EncoderInfo& encoderInfo, const int
         goto end;
     }
 
+    isEncoderSupported = true;
+    goto end;
+
     ctx = avcodec_alloc_context3(codec);
     if (!ctx) goto end;
 
