@@ -37,4 +37,16 @@ struct VideoEncoderInfo {
     bool isVaapiRadeonSi{};
 };
 
+struct AudioEncoderFormat {
+    const char* codecName{};
+    int bitDepth{16};
+};
+
+struct AudioEncoderInfo {
+    uint8_t UUID[16]{};
+    uint32_t fourCC{};
+    const char* encoder{};
+    std::vector<AudioEncoderFormat> formats{};
+};
+
 }

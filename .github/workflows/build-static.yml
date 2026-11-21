@@ -218,6 +218,7 @@ jobs:
             --enable-encoder=h264_vaapi,hevc_vaapi,av1_vaapi \
             --enable-encoder=h264_nvenc,hevc_nvenc,av1_nvenc \
             --enable-encoder=h264_vulkan,hevc_vulkan,av1_vulkan \
+            --enable-encoder=aac \
             --enable-libx264 \
             --enable-libx265 \
             --enable-libsvtav1 \

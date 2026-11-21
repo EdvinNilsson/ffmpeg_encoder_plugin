@@ -7,6 +7,7 @@ namespace IOPlugin {
 
 enum SettingsType {
     VideoSettings,
+    AudioSettings,
 };
 
 enum QualityMode : int32_t {
@@ -18,6 +19,7 @@ enum QualityMode : int32_t {
 class UISettingsController final {
    public:
     explicit UISettingsController(VideoEncoderInfo  encoderInfo);
+    explicit UISettingsController(AudioEncoderInfo  encoderInfo);
     void Load(IPropertyProvider* values);
     StatusCode Render(HostListRef* settingsList) const;
 
@@ -25,6 +27,7 @@ class UISettingsController final {
     void InitDefaults();
     void SetFirstSupportedQualityMode();
     StatusCode RenderVideoQuality(HostListRef* settingsList) const;
+    StatusCode RenderAudioQuality(HostListRef* settingsList) const;
 
    public:
     QualityMode GetQualityMode() const;
@@ -37,6 +40,7 @@ class UISettingsController final {
    private:
     SettingsType type;
     VideoEncoderInfo videoEncoderInfo;
+    AudioEncoderInfo audioEncoderInfo;
 
     QualityMode qualityMode{};
     int32_t qp{};

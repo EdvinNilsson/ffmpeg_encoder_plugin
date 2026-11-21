@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include "aac_encoder.h"
 #include "av1_nvenc_encoder.h"
 #include "av1_vaapi_encoder.h"
 #include "av1_vulkan_encoder.h"
@@ -101,6 +102,12 @@ StatusCode g_HandleCreateObj(unsigned char* p_pUUID, ObjectRef* p_ppObj) {
         return errNone;
     }
 
+    if (memcmp(p_pUUID, AACEncoder::encoderInfo.UUID, 15) == 0) {
+        const uint8_t formatIndex = p_pUUID[15] - AACEncoder::encoderInfo.UUID[15];
+        *p_ppObj = new AACEncoder(formatIndex);
+        return errNone;
+    }
+
     return errUnsupported;
 }
 
@@ -143,6 +150,9 @@ StatusCode g_ListCodecs(HostListRef* p_pList) {
     if (err != errNone) return err;
 
     err = SvtAv1Encoder::RegisterCodecs(p_pList);
+    if (err != errNone) return err;
+
+    err = AACEncoder::RegisterCodecs(p_pList);
     if (err != errNone) return err;
 
     return errNone;
@@ -198,6 +208,10 @@ StatusCode g_GetEncoderSettings(unsigned char* p_pUUID, HostPropertyCollectionRe
 
     if (memcmp(p_pUUID, SvtAv1Encoder::encoderInfo.UUID, 15) == 0) {
         return SvtAv1Encoder::GetEncoderSettings(p_pValues, p_pSettingsList);
+    }
+
+    if (memcmp(p_pUUID, AACEncoder::encoderInfo.UUID, 15) == 0) {
+        return AACEncoder::GetEncoderSettings(p_pValues, p_pSettingsList);
     }
 
     return errNoCodec;

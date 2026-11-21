@@ -50,6 +50,8 @@ endif ()
 include_directories(include wrapper ${FFMPEG_INCLUDE_DIR})
 
 set(SRCS
+        aac_encoder.cpp
+        audio_encoder.cpp
         av1_nvenc_encoder.cpp
         av1_vaapi_encoder.cpp
         av1_vulkan_encoder.cpp
@@ -70,6 +72,8 @@ set(SRCS
 )
 
 set(HEADERS
+        aac_encoder.h
+        audio_encoder.h
         av1_nvenc_encoder.h
         av1_vaapi_encoder.h
         av1_vulkan_encoder.h

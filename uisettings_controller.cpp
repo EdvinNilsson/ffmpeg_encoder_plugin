@@ -7,6 +7,10 @@ UISettingsController::UISettingsController(VideoEncoderInfo encoderInfo) : video
     InitDefaults();
 }
 
+UISettingsController::UISettingsController(AudioEncoderInfo encoderInfo) : audioEncoderInfo(std::move(encoderInfo)) {
+    type = AudioSettings;
+    InitDefaults();
+}
 
 void UISettingsController::Load(IPropertyProvider* values) {
     uint8_t val8 = 0;
@@ -15,6 +19,9 @@ void UISettingsController::Load(IPropertyProvider* values) {
         switch (type) {
             case VideoSettings:
                 *this = UISettingsController(videoEncoderInfo);
+                return;
+            case AudioSettings:
+                *this = UISettingsController(audioEncoderInfo);
                 return;
             default:
                 return;
@@ -42,6 +49,9 @@ StatusCode UISettingsController::Render(HostListRef* settingsList) const {
     switch (type) {
         case VideoSettings:
             err = RenderVideoQuality(settingsList);
+            break;
+        case AudioSettings:
+            err = RenderAudioQuality(settingsList);
             break;
     }
 
@@ -77,7 +87,11 @@ void UISettingsController::InitDefaults() {
             preset = videoEncoderInfo.defaultPreset;
             tune = videoEncoderInfo.defaultTune;
             break;
+        case AudioSettings:
+            encoder = audioEncoderInfo.encoder;
 
+            bitRate = 128;
+            break;
     }
 
     const std::string prefix = std::string("ffmpeg_") + encoder + "_";
@@ -213,6 +227,21 @@ StatusCode UISettingsController::RenderVideoQuality(HostListRef* settingsList) c
         item.MakeTextBox("Encoder Params", customParams, "");
         if (!item.IsSuccess() || !settingsList->Append(&item)) {
             g_Log(logLevelError, "FFmpeg Plugin :: Failed to populate custom params UI entry");
+            return errFail;
+        }
+    }
+
+    return errNone;
+}
+
+StatusCode UISettingsController::RenderAudioQuality(HostListRef* settingsList) const {
+    {
+        HostUIConfigEntryRef item(bitrateId);
+        item.MakeSlider("Bit Rate", "kb/s", bitRate, 32, 960, 128);
+        item.SetTriggersUpdate(true);
+
+        if (!item.IsSuccess() || !settingsList->Append(&item)) {
+            g_Log(logLevelError, "FFmpeg Plugin :: Failed to populate bitrate slider UI entry");
             return errFail;
         }
     }
