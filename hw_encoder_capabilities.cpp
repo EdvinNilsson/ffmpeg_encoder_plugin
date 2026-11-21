@@ -125,6 +125,13 @@ static uint32_t GetVulkanQualityLevelCount(const AVBufferRef* hwDeviceCtx, const
 
 void InitializeVulkanPresets(EncoderInfo& encoderInfo) {
 #ifdef HAVE_VULKAN_LIBRARY
+
+#ifdef __linux__
+    // Disable LSFG-VK to prevent a segmentation fault when Vulkan is loaded, due to symbols loaded by LSFG-VK are
+    // conflicting with symbols from Resolve.
+    setenv("VK_LOADER_LAYERS_DISABLE", "*LS_frame_generation*,*LSFGVK_frame_generation*", 1);
+#endif
+
     AVBufferRef* hwDeviceCtx = nullptr;
     if (av_hwdevice_ctx_create(&hwDeviceCtx, AV_HWDEVICE_TYPE_VULKAN, nullptr, nullptr, 0) < 0) goto end;
 
