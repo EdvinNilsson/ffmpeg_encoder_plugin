@@ -139,6 +139,7 @@ if (VULKAN_INCLUDE_DIR)
     int main() {
         VkVideoProfileInfoKHR profile{};
         VkVideoEncodeCapabilitiesKHR caps{};
+        VkVideoEncodeAV1ProfileInfoKHR av1Profile{};
         return 0;
     }
     " HAVE_VULKAN_VIDEO)
