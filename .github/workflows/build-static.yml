@@ -4,8 +4,8 @@ on: workflow_dispatch
 
 env:
   X265_VERSION: 4.3
-  SVT_AV1_VERSION: v4.2.0
-  FFMPEG_VERSION: n9.0
+  SVT_AV1_VERSION: v4.3.0
+  FFMPEG_VERSION: n9.1
 
 jobs:
   build:
