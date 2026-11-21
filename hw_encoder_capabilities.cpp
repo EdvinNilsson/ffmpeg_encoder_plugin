@@ -57,7 +57,7 @@ static uint32_t GetVaapiQualityLevelCount(const AVBufferRef* hwDeviceCtx, const 
 }
 #endif
 
-void InitializeVaapiPresets(EncoderInfo& encoderInfo) {
+void InitializeVaapiPresets(VideoEncoderInfo& encoderInfo) {
 #if HAVE_VA_LIBRARY
     AVBufferRef* hwDeviceCtx = nullptr;
     if (av_hwdevice_ctx_create(&hwDeviceCtx, AV_HWDEVICE_TYPE_VAAPI, nullptr, nullptr, 0) < 0) goto end;
@@ -123,7 +123,7 @@ static uint32_t GetVulkanQualityLevelCount(const AVBufferRef* hwDeviceCtx, const
 }
 #endif
 
-void InitializeVulkanPresets(EncoderInfo& encoderInfo) {
+void InitializeVulkanPresets(VideoEncoderInfo& encoderInfo) {
 #ifdef HAVE_VULKAN_LIBRARY
 
 #ifdef __linux__

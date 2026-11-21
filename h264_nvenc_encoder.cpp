@@ -1,6 +1,6 @@
 #include "h264_nvenc_encoder.h"
 
-const EncoderInfo H264NvencEncoder::encoderInfo = {
+const VideoEncoderInfo H264NvencEncoder::encoderInfo = {
     .UUID{0x10, 0x2f, 0x9d, 0x71, 0x19, 0xd7, 0xa8, 0xde, 0x90, 0xb1, 0xff, 0x35, 0x91, 0x4f, 0xaa, 0x36},
     .codecGroup = "H.264",
     .fourCC = 'avc1',
@@ -40,10 +40,7 @@ const EncoderInfo H264NvencEncoder::encoderInfo = {
         },
 };
 
-H264NvencEncoder::H264NvencEncoder(const int formatIndex) {
-    FFmpegEncoder::encoderInfo = encoderInfo;
-    FFmpegEncoder::formatIndex = formatIndex;
-}
+H264NvencEncoder::H264NvencEncoder(const int formatIndex) : FFmpegEncoder(encoderInfo, formatIndex) {}
 
 StatusCode H264NvencEncoder::RegisterCodecs(HostListRef* list) {
     return FFmpegEncoder::RegisterCodecs(list, encoderInfo);

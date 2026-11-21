@@ -1,6 +1,6 @@
 #include "av1_nvenc_encoder.h"
 
-const EncoderInfo Av1NvencEncoder::encoderInfo = {
+const VideoEncoderInfo Av1NvencEncoder::encoderInfo = {
     .UUID{0x68, 0x78, 0x8d, 0xc5, 0xdd, 0xb1, 0x73, 0x07, 0x46, 0x10, 0xdf, 0xa7, 0xb3, 0x82, 0x89, 0x16},
     .codecGroup = "AV1",
     .fourCC = 'av01',
@@ -40,10 +40,7 @@ const EncoderInfo Av1NvencEncoder::encoderInfo = {
         },
 };
 
-Av1NvencEncoder::Av1NvencEncoder(const int formatIndex) {
-    FFmpegEncoder::encoderInfo = encoderInfo;
-    FFmpegEncoder::formatIndex = formatIndex;
-}
+Av1NvencEncoder::Av1NvencEncoder(const int formatIndex) : FFmpegEncoder(encoderInfo, formatIndex) {}
 
 StatusCode Av1NvencEncoder::RegisterCodecs(HostListRef* list) {
     return FFmpegEncoder::RegisterCodecs(list, encoderInfo);

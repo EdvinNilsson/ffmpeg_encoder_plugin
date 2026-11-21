@@ -1,20 +1,24 @@
 #include "uisettings_controller.h"
 
-UISettingsController::UISettingsController(const EncoderInfo& encoderInfo) : encoderInfo(encoderInfo) {
+#include <utility>
+
+UISettingsController::UISettingsController(VideoEncoderInfo encoderInfo) : videoEncoderInfo(std::move(encoderInfo)) {
+    type = VideoSettings;
     InitDefaults();
 }
 
-UISettingsController::UISettingsController(const HostCodecConfigCommon& commonProps, const EncoderInfo& encoderInfo)
-    : commonProps(commonProps), encoderInfo(encoderInfo) {
-    InitDefaults();
-}
 
 void UISettingsController::Load(IPropertyProvider* values) {
     uint8_t val8 = 0;
     values->GetUINT8("ffmpeg_reset", val8);
     if (val8 != 0) {
-        *this = UISettingsController(encoderInfo);
-        return;
+        switch (type) {
+            case VideoSettings:
+                *this = UISettingsController(videoEncoderInfo);
+                return;
+            default:
+                return;
+        }
     }
 
     int32_t val32 = 0;
@@ -34,7 +38,13 @@ void UISettingsController::Load(IPropertyProvider* values) {
 }
 
 StatusCode UISettingsController::Render(HostListRef* settingsList) const {
-    StatusCode err = RenderQuality(settingsList);
+    StatusCode err = errNone;
+    switch (type) {
+        case VideoSettings:
+            err = RenderVideoQuality(settingsList);
+            break;
+    }
+
     if (err != errNone) {
         return err;
     }
@@ -53,15 +63,24 @@ StatusCode UISettingsController::Render(HostListRef* settingsList) const {
 }
 
 void UISettingsController::InitDefaults() {
-    qualityMode = CRF;
-    SetFirstSupportedQualityMode();
+    const char* encoder = nullptr;
 
-    qp = encoderInfo.qp[1];
-    bitRate = 6000;
-    preset = encoderInfo.defaultPreset;
-    tune = encoderInfo.defaultTune;
+    switch (type) {
+        case VideoSettings:
+            encoder = videoEncoderInfo.encoder;
 
-    const std::string prefix = std::string("ffmpeg_") + encoderInfo.encoder + "_";
+            qualityMode = CRF;
+            SetFirstSupportedQualityMode();
+
+            qp = videoEncoderInfo.qp[1];
+            bitRate = 6000;
+            preset = videoEncoderInfo.defaultPreset;
+            tune = videoEncoderInfo.defaultTune;
+            break;
+
+    }
+
+    const std::string prefix = std::string("ffmpeg_") + encoder + "_";
     qualityModeId = prefix + "q_mode";
     qpId = prefix + "qp";
     bitrateId = prefix + "bitrate";
@@ -71,24 +90,24 @@ void UISettingsController::InitDefaults() {
 }
 
 void UISettingsController::SetFirstSupportedQualityMode() {
-    if (!(qualityMode & encoderInfo.qualityModes)) {
-        if (encoderInfo.qualityModes & CRF)
+    if (!(qualityMode & videoEncoderInfo.qualityModes)) {
+        if (videoEncoderInfo.qualityModes & CRF)
             qualityMode = CRF;
-        else if (encoderInfo.qualityModes & CQP)
+        else if (videoEncoderInfo.qualityModes & CQP)
             qualityMode = CQP;
-        else if (encoderInfo.qualityModes & VBR)
+        else if (videoEncoderInfo.qualityModes & VBR)
             qualityMode = VBR;
     }
 }
 
-StatusCode UISettingsController::RenderQuality(HostListRef* settingsList) const {
+StatusCode UISettingsController::RenderVideoQuality(HostListRef* settingsList) const {
     {
         HostUIConfigEntryRef item(presetId);
 
         std::vector<std::string> textsVec;
         std::vector<int> valuesVec;
 
-        for (const auto& [key, value] : encoderInfo.presets) {
+        for (const auto& [key, value] : videoEncoderInfo.presets) {
             valuesVec.push_back(key);
             textsVec.emplace_back(value);
         }
@@ -100,13 +119,13 @@ StatusCode UISettingsController::RenderQuality(HostListRef* settingsList) const 
         }
     }
 
-    if (!encoderInfo.tunes.empty()) {
+    if (!videoEncoderInfo.tunes.empty()) {
         HostUIConfigEntryRef item(tuneId);
 
         std::vector<std::string> textsVec;
         std::vector<int> valuesVec;
 
-        for (const auto& [key, value] : encoderInfo.tunes) {
+        for (const auto& [key, value] : videoEncoderInfo.tunes) {
             valuesVec.push_back(key);
             textsVec.emplace_back(value);
         }
@@ -124,17 +143,17 @@ StatusCode UISettingsController::RenderQuality(HostListRef* settingsList) const 
         std::vector<std::string> textsVec;
         std::vector<int> valuesVec;
 
-        if (encoderInfo.qualityModes & CRF) {
+        if (videoEncoderInfo.qualityModes & CRF) {
             textsVec.emplace_back("Constant Rate Factor");
             valuesVec.push_back(CRF);
         }
 
-        if (encoderInfo.qualityModes & CQP) {
+        if (videoEncoderInfo.qualityModes & CQP) {
             textsVec.emplace_back("Constant Quality");
             valuesVec.push_back(CQP);
         }
 
-        if (encoderInfo.qualityModes & VBR) {
+        if (videoEncoderInfo.qualityModes & VBR) {
             textsVec.emplace_back("Variable Rate");
             valuesVec.push_back(VBR);
         }
@@ -151,16 +170,16 @@ StatusCode UISettingsController::RenderQuality(HostListRef* settingsList) const 
     {
         HostUIConfigEntryRef item(qpId);
         const char* pLabel = nullptr;
-        if (encoderInfo.hwAcceleration == Nvenc && qp == 0) {
+        if (videoEncoderInfo.hwAcceleration == Nvenc && qp == 0) {
             pLabel = "(automatic)";
-        } else if (qp < encoderInfo.qp[2] / 3) {
+        } else if (qp < videoEncoderInfo.qp[2] / 3) {
             pLabel = "(high)";
-        } else if (qp < encoderInfo.qp[2] * 2 / 3) {
+        } else if (qp < videoEncoderInfo.qp[2] * 2 / 3) {
             pLabel = "(medium)";
         } else {
             pLabel = "(low)";
         }
-        item.MakeSlider("Factor", pLabel, qp, encoderInfo.qp[0], encoderInfo.qp[2], encoderInfo.qp[1]);
+        item.MakeSlider("Factor", pLabel, qp, videoEncoderInfo.qp[0], videoEncoderInfo.qp[2], videoEncoderInfo.qp[1]);
         item.SetTriggersUpdate(true);
         item.SetHidden(qualityMode == VBR);
         if (!item.IsSuccess() || !settingsList->Append(&item)) {
@@ -180,7 +199,7 @@ StatusCode UISettingsController::RenderQuality(HostListRef* settingsList) const 
         }
     }
 
-    if (encoderInfo.customParamsKey != nullptr) {
+    if (videoEncoderInfo.customParamsKey != nullptr) {
         {
             HostUIConfigEntryRef item("separator");
             item.MakeSeparator();

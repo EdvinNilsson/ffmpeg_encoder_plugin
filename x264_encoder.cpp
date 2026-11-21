@@ -1,6 +1,6 @@
 #include "x264_encoder.h"
 
-const EncoderInfo X264Encoder::encoderInfo = {
+const VideoEncoderInfo X264Encoder::encoderInfo = {
     .UUID{0x10, 0x33, 0x0b, 0xa7, 0x8e, 0xf2, 0x9c, 0xc6, 0x19, 0xa3, 0x56, 0xa7, 0x8a, 0xa5, 0x17, 0xc8},
     .codecGroup = "H.264",
     .fourCC = 'avc1',
@@ -91,10 +91,7 @@ const EncoderInfo X264Encoder::encoderInfo = {
         },
 };
 
-X264Encoder::X264Encoder(const int formatIndex) {
-    FFmpegEncoder::encoderInfo = encoderInfo;
-    FFmpegEncoder::formatIndex = formatIndex;
-}
+X264Encoder::X264Encoder(const int formatIndex) : FFmpegEncoder(encoderInfo, formatIndex) {}
 
 StatusCode X264Encoder::RegisterCodecs(HostListRef* list) { return FFmpegEncoder::RegisterCodecs(list, encoderInfo); }
 

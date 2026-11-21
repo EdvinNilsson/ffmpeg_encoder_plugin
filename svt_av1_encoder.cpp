@@ -1,6 +1,6 @@
 #include "svt_av1_encoder.h"
 
-const EncoderInfo SvtAv1Encoder::encoderInfo = {
+const VideoEncoderInfo SvtAv1Encoder::encoderInfo = {
     .UUID{0x97, 0x39, 0xbb, 0x53, 0x9b, 0x97, 0xd0, 0x0e, 0x3e, 0x1c, 0x90, 0xeb, 0x70, 0x75, 0x9d, 0xcc},
     .codecGroup = "AV1",
     .fourCC = 'av01',
@@ -48,10 +48,7 @@ const EncoderInfo SvtAv1Encoder::encoderInfo = {
         },
 };
 
-SvtAv1Encoder::SvtAv1Encoder(const int formatIndex) {
-    FFmpegEncoder::encoderInfo = encoderInfo;
-    FFmpegEncoder::formatIndex = formatIndex;
-}
+SvtAv1Encoder::SvtAv1Encoder(const int formatIndex) : FFmpegEncoder(encoderInfo, formatIndex) {}
 
 StatusCode SvtAv1Encoder::RegisterCodecs(HostListRef* list) { return FFmpegEncoder::RegisterCodecs(list, encoderInfo); }
 

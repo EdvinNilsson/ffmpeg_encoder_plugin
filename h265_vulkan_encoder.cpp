@@ -2,7 +2,7 @@
 
 #include "hw_encoder_capabilities.h"
 
-EncoderInfo H265VulkanEncoder::encoderInfo = {
+VideoEncoderInfo H265VulkanEncoder::encoderInfo = {
     .UUID{0x3d, 0x0a, 0x4b, 0x28, 0x49, 0xb7, 0x4f, 0x5b, 0xb9, 0x6a, 0x4e, 0x76, 0x24, 0x21, 0x9d, 0x40},
     .codecGroup = "H.265",
     .fourCC = 'hvc1',
@@ -33,10 +33,7 @@ EncoderInfo H265VulkanEncoder::encoderInfo = {
         },
 };
 
-H265VulkanEncoder::H265VulkanEncoder(const int formatIndex) {
-    FFmpegEncoder::encoderInfo = encoderInfo;
-    FFmpegEncoder::formatIndex = formatIndex;
-}
+H265VulkanEncoder::H265VulkanEncoder(const int formatIndex) : FFmpegEncoder(encoderInfo, formatIndex) {}
 
 StatusCode H265VulkanEncoder::RegisterCodecs(HostListRef* list) {
     InitializeVulkanPresets(encoderInfo);

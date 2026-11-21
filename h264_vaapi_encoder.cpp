@@ -2,7 +2,7 @@
 
 #include "hw_encoder_capabilities.h"
 
-EncoderInfo H264VaapiEncoder::encoderInfo = {
+VideoEncoderInfo H264VaapiEncoder::encoderInfo = {
     .UUID{0xaa, 0xeb, 0x0f, 0x28, 0x4c, 0x6f, 0x4e, 0x3f, 0x95, 0xdd, 0x23, 0x43, 0x41, 0xf3, 0x8d, 0xa0},
     .codecGroup = "H.264",
     .fourCC = 'avc1',
@@ -33,10 +33,7 @@ EncoderInfo H264VaapiEncoder::encoderInfo = {
         },
 };
 
-H264VaapiEncoder::H264VaapiEncoder(const int formatIndex) {
-    FFmpegEncoder::encoderInfo = encoderInfo;
-    FFmpegEncoder::formatIndex = formatIndex;
-}
+H264VaapiEncoder::H264VaapiEncoder(const int formatIndex) : FFmpegEncoder(encoderInfo, formatIndex) {}
 
 StatusCode H264VaapiEncoder::RegisterCodecs(HostListRef* list) {
     InitializeVaapiPresets(encoderInfo);

@@ -14,24 +14,24 @@ namespace IOPlugin {
 
 class FFmpegEncoder : public IPluginCodecRef {
    protected:
-    FFmpegEncoder();
+    FFmpegEncoder(VideoEncoderInfo encoderInfo, int formatIndex);
     ~FFmpegEncoder() override;
 
     StatusCode DoInit(HostPropertyCollectionRef* p_pProps) override;
-    static StatusCode RegisterCodecs(HostListRef* list, const EncoderInfo& encoderInfo);
+    static StatusCode RegisterCodecs(HostListRef* list, const VideoEncoderInfo& encoderInfo);
     static StatusCode GetEncoderSettings(HostPropertyCollectionRef* values, HostListRef* settingsList,
-                                         const EncoderInfo& encoderInfo);
+                                         const VideoEncoderInfo& encoderInfo);
     StatusCode DoOpen(HostBufferRef* p_pBuff) override;
     virtual StatusCode ApplyOptions(AVCodecContext* ctx, UISettingsController& settings, HostBufferRef* p_pBuff);
     StatusCode DoProcess(HostBufferRef* p_pBuff) override;
     void DoFlush() override;
 
-    EncoderInfo encoderInfo{};
+    VideoEncoderInfo encoderInfo{};
     int formatIndex{};
     HostCodecConfigCommon commonProps{};
 
    private:
-    static bool IsEncoderSupported(const EncoderInfo& encoderInfo, int formatIndex);
+    static bool IsEncoderSupported(const VideoEncoderInfo& encoderInfo, int formatIndex);
 
     std::unique_ptr<UISettingsController> settings{};
 

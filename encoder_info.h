@@ -9,7 +9,7 @@ namespace IOPlugin {
 
 enum HardwareAcceleration { None, Vaapi, Nvenc, Vulkan };
 
-struct EncoderFormat {
+struct VideoEncoderFormat {
     const char* codecName{};
     int bitDepth{8};
     uint32_t colorModel{};
@@ -20,7 +20,7 @@ struct EncoderFormat {
     PixelFormatRepacker* pixelFormatRepacker{};
 };
 
-struct EncoderInfo {
+struct VideoEncoderInfo {
     uint8_t UUID[16]{};
     const char* codecGroup{};
     uint32_t fourCC{};
@@ -33,7 +33,7 @@ struct EncoderInfo {
     std::map<int, std::string> tunes{};
     int defaultTune{-1};
     const char* customParamsKey{};
-    std::vector<EncoderFormat> formats{};
+    std::vector<VideoEncoderFormat> formats{};
     bool isVaapiRadeonSi{};
 };
 

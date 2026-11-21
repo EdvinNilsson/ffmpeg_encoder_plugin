@@ -1,5 +1,8 @@
 #include "ffmpeg_encoder.h"
 
+#include <cstring>
+
+#include "ffmpeg_utils.h"
 #include "hw_encoder_capabilities.h"
 
 extern "C" {
@@ -7,18 +10,11 @@ extern "C" {
 #include <libavutil/opt.h>
 }
 
-#undef av_err2str
-av_always_inline static std::string av_err2string(int errnum) {
-    char str[AV_ERROR_MAX_STRING_SIZE];
-    return av_make_error_string(str, AV_ERROR_MAX_STRING_SIZE, errnum);
-}
-#define av_err2str(err) av_err2string(err).c_str()
-
 StatusCode FFmpegEncoder::DoInit(HostPropertyCollectionRef* p_pProps) { return errNone; }
 
-StatusCode FFmpegEncoder::RegisterCodecs(HostListRef* list, const EncoderInfo& encoderInfo) {
+StatusCode FFmpegEncoder::RegisterCodecs(HostListRef* list, const VideoEncoderInfo& encoderInfo) {
     for (int i = 0; i < static_cast<int>(encoderInfo.formats.size()); ++i) {
-        const EncoderFormat& format = encoderInfo.formats[i];
+        const VideoEncoderFormat& format = encoderInfo.formats[i];
 
         HostPropertyCollectionRef codecInfo;
         if (!codecInfo.IsValid()) {
@@ -32,7 +28,7 @@ StatusCode FFmpegEncoder::RegisterCodecs(HostListRef* list, const EncoderInfo& e
         }
 
         uint8_t uuid[16];
-        memcpy(uuid, encoderInfo.UUID, sizeof(uuid));
+        std::memcpy(uuid, encoderInfo.UUID, sizeof(uuid));
         uuid[15] += i;
         codecInfo.SetProperty(pIOPropUUID, propTypeUInt8, uuid, 16);
 
@@ -93,11 +89,8 @@ StatusCode FFmpegEncoder::RegisterCodecs(HostListRef* list, const EncoderInfo& e
 }
 
 StatusCode FFmpegEncoder::GetEncoderSettings(HostPropertyCollectionRef* values, HostListRef* settingsList,
-                                             const EncoderInfo& encoderInfo) {
-    HostCodecConfigCommon commonProps;
-    commonProps.Load(values);
-
-    UISettingsController settings(commonProps, encoderInfo);
+                                             const VideoEncoderInfo& encoderInfo) {
+    UISettingsController settings(encoderInfo);
     settings.Load(values);
 
     return settings.Render(settingsList);
@@ -106,7 +99,7 @@ StatusCode FFmpegEncoder::GetEncoderSettings(HostPropertyCollectionRef* values, 
 StatusCode FFmpegEncoder::DoOpen(HostBufferRef* p_pBuff) {
     commonProps.Load(p_pBuff);
 
-    settings = std::make_unique<UISettingsController>(commonProps, encoderInfo);
+    settings = std::make_unique<UISettingsController>(encoderInfo);
     settings->Load(p_pBuff);
 
     int16_t colorMatrix{};
@@ -122,7 +115,7 @@ StatusCode FFmpegEncoder::DoOpen(HostBufferRef* p_pBuff) {
     constexpr uint8_t isMultiPass = 0;
     p_pBuff->SetProperty(pIOPropMultiPass, propTypeUInt8, &isMultiPass, 1);
 
-    const EncoderFormat& format = encoderInfo.formats[formatIndex];
+    const VideoEncoderFormat& format = encoderInfo.formats[formatIndex];
 
     width = static_cast<int>(commonProps.GetWidth());
     height = static_cast<int>(commonProps.GetHeight());
@@ -161,7 +154,7 @@ StatusCode FFmpegEncoder::DoOpen(HostBufferRef* p_pBuff) {
     ctx = avcodec_alloc_context3(codec);
     if (!ctx) {
         g_Log(logLevelError, "FFmpeg Plugin :: Failed to allocate codec context");
-        return errFail;
+        return errAlloc;
     }
 
     ctx->pix_fmt = useHwDevice ? hwPixelFormat : pixelFormat;
@@ -182,7 +175,8 @@ StatusCode FFmpegEncoder::DoOpen(HostBufferRef* p_pBuff) {
         int err = av_hwdevice_ctx_create(&hwDeviceCtx, hwDeviceType, nullptr, nullptr, 0);
 
         if (err < 0) {
-            g_Log(logLevelError, "FFmpeg Plugin :: Failed to create a %s device. %s", hwDeviceName, av_err2str(err));
+            g_Log(logLevelError, "FFmpeg Plugin :: Failed to create a %s device. %s", hwDeviceName,
+                  av_err2string(err).c_str());
             return errUnsupported;
         }
 
@@ -202,7 +196,7 @@ StatusCode FFmpegEncoder::DoOpen(HostBufferRef* p_pBuff) {
         framesCtx->initial_pool_size = encoderInfo.hwAcceleration == Vulkan ? 4 : 20;
         if ((err = av_hwframe_ctx_init(hwFramesRef)) < 0) {
             g_Log(logLevelError, "FFmpeg Plugin :: Failed to initialize %s frame context. %s", hwDeviceName,
-                  av_err2str(err));
+                  av_err2string(err).c_str());
             av_buffer_unref(&hwFramesRef);
             return errUnsupported;
         }
@@ -218,7 +212,7 @@ StatusCode FFmpegEncoder::DoOpen(HostBufferRef* p_pBuff) {
     thread_local std::string logs;
     logs.clear();
 
-    auto logCallback = [](void* ptr, int level, const char* fmt, va_list vl) {
+    const auto logCallback = [](void* ptr, int level, const char* fmt, va_list vl) {
         if (level <= AV_LOG_WARNING) {
             if (!strcmp(fmt, "Invalid value for %s: %s.\n") || !strcmp(fmt, "Error parsing option '%s = %s'.\n") ||
                 !strcmp(fmt, "Error parsing option %s: %s.\n") || !strcmp(fmt, "Unknown option: %s.\n") ||
@@ -257,8 +251,10 @@ StatusCode FFmpegEncoder::DoOpen(HostBufferRef* p_pBuff) {
     }
 
     pkt = av_packet_alloc();
+    if (pkt == nullptr) return errAlloc;
 
     swFrame = av_frame_alloc();
+    if (swFrame == nullptr) return errAlloc;
     swFrame->format = pixelFormat;
     swFrame->width = width;
     swFrame->height = height;
@@ -384,14 +380,14 @@ StatusCode FFmpegEncoder::DoProcess(HostBufferRef* p_pBuff) {
             if (hwFrame == nullptr) return errAlloc;
 
             if (int err; (err = av_hwframe_get_buffer(ctx->hw_frames_ctx, hwFrame, 0)) < 0) {
-                g_Log(logLevelError, "FFmpeg Plugin :: Failed to allocate HW frame. %s", av_err2str(err));
+                g_Log(logLevelError, "FFmpeg Plugin :: Failed to allocate HW frame. %s", av_err2string(ret).c_str());
                 av_frame_free(&hwFrame);
                 return errAlloc;
             }
 
             if (int err; (err = av_hwframe_transfer_data(hwFrame, swFrame, 0)) < 0) {
                 g_Log(logLevelError, "FFmpeg Plugin :: Error while transferring frame data to surface. %s",
-                      av_err2str(err));
+                      av_err2string(ret).c_str());
                 av_frame_free(&hwFrame);
                 return errUnsupported;
             }
@@ -415,7 +411,7 @@ StatusCode FFmpegEncoder::DoProcess(HostBufferRef* p_pBuff) {
     }
 
     if (ret < 0) {
-        g_Log(logLevelError, "FFmpeg Plugin :: Failed to encode frame. %s", av_err2str(ret));
+        g_Log(logLevelError, "FFmpeg Plugin :: Failed to encode frame. %s", av_err2string(ret).c_str());
         return errFail;
     }
 
@@ -432,7 +428,7 @@ StatusCode FFmpegEncoder::DoProcess(HostBufferRef* p_pBuff) {
         }
 
         if (ret < 0) {
-            g_Log(logLevelError, "FFmpeg Plugin :: Failed to read encoded data. %s", av_err2str(ret));
+            g_Log(logLevelError, "FFmpeg Plugin :: Failed to read encoded data. %s", av_err2string(ret).c_str());
             av_packet_unref(pkt);
             return errFail;
         }
@@ -453,7 +449,7 @@ StatusCode FFmpegEncoder::DoProcess(HostBufferRef* p_pBuff) {
             return errAlloc;
         }
 
-        memcpy(outBufPtr, pkt->data, pkt->size);
+        std::memcpy(outBufPtr, pkt->data, pkt->size);
 
         outBuf.SetProperty(pIOPropPTS, propTypeInt64, &pkt->pts, 1);
         outBuf.SetProperty(pIOPropDTS, propTypeInt64, &pkt->dts, 1);
@@ -463,13 +459,14 @@ StatusCode FFmpegEncoder::DoProcess(HostBufferRef* p_pBuff) {
 
         av_packet_unref(pkt);
 
+        outBuf.UnlockBuffer();
         m_pCallback->SendOutput(&outBuf);
     }
 }
 
 void FFmpegEncoder::DoFlush() { DoProcess(nullptr); }
 
-bool FFmpegEncoder::IsEncoderSupported(const EncoderInfo& encoderInfo, const int formatIndex) {
+bool FFmpegEncoder::IsEncoderSupported(const VideoEncoderInfo& encoderInfo, const int formatIndex) {
     bool isEncoderSupported = false;
 
     const int logLevel = av_log_get_level();
@@ -569,7 +566,8 @@ end:
     return isEncoderSupported;
 }
 
-FFmpegEncoder::FFmpegEncoder() = default;
+FFmpegEncoder::FFmpegEncoder(VideoEncoderInfo encoderInfo, const int formatIndex)
+    : encoderInfo(std::move(encoderInfo)), formatIndex(formatIndex) {}
 
 FFmpegEncoder::~FFmpegEncoder() {
     if (ctx != nullptr) avcodec_free_context(&ctx);

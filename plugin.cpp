@@ -5,7 +5,6 @@
 #include "av1_nvenc_encoder.h"
 #include "av1_vaapi_encoder.h"
 #include "av1_vulkan_encoder.h"
-#include "ffmpeg_encoder.h"
 #include "h264_nvenc_encoder.h"
 #include "h264_vaapi_encoder.h"
 #include "h264_vulkan_encoder.h"
@@ -13,7 +12,6 @@
 #include "h265_vaapi_encoder.h"
 #include "h265_vulkan_encoder.h"
 #include "svt_av1_encoder.h"
-#include "uisettings_controller.h"
 #include "x264_encoder.h"
 #include "x265_encoder.h"
 

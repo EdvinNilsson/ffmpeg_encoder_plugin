@@ -6,7 +6,7 @@ namespace IOPlugin {
 
 class H265VaapiEncoder final : public FFmpegEncoder {
    public:
-    static EncoderInfo encoderInfo;
+    static VideoEncoderInfo encoderInfo;
 
     explicit H265VaapiEncoder(int formatIndex);
 

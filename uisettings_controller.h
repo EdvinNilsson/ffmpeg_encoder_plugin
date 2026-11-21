@@ -5,6 +5,10 @@
 
 namespace IOPlugin {
 
+enum SettingsType {
+    VideoSettings,
+};
+
 enum QualityMode : int32_t {
     CQP = 1 << 0,
     CRF = 1 << 1,
@@ -13,15 +17,14 @@ enum QualityMode : int32_t {
 
 class UISettingsController final {
    public:
-    explicit UISettingsController(const EncoderInfo& encoderInfo);
-    UISettingsController(const HostCodecConfigCommon& commonProps, const EncoderInfo& encoderInfo);
+    explicit UISettingsController(VideoEncoderInfo  encoderInfo);
     void Load(IPropertyProvider* values);
     StatusCode Render(HostListRef* settingsList) const;
 
    private:
     void InitDefaults();
     void SetFirstSupportedQualityMode();
-    StatusCode RenderQuality(HostListRef* settingsList) const;
+    StatusCode RenderVideoQuality(HostListRef* settingsList) const;
 
    public:
     QualityMode GetQualityMode() const;
@@ -32,8 +35,8 @@ class UISettingsController final {
     const std::string& GetCustomParams() const;
 
    private:
-    HostCodecConfigCommon commonProps;
-    EncoderInfo encoderInfo;
+    SettingsType type;
+    VideoEncoderInfo videoEncoderInfo;
 
     QualityMode qualityMode{};
     int32_t qp{};

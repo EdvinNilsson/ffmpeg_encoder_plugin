@@ -6,7 +6,7 @@ namespace IOPlugin {
 
 class Av1VulkanEncoder final : public FFmpegEncoder {
    public:
-    static EncoderInfo encoderInfo;
+    static VideoEncoderInfo encoderInfo;
 
     explicit Av1VulkanEncoder(int formatIndex);
     static StatusCode RegisterCodecs(HostListRef* list);

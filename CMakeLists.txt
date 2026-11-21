@@ -74,6 +74,7 @@ set(HEADERS
         av1_vaapi_encoder.h
         av1_vulkan_encoder.h
         ffmpeg_encoder.h
+        ffmpeg_utils.h
         h264_nvenc_encoder.h
         h264_vaapi_encoder.h
         h264_vulkan_encoder.h

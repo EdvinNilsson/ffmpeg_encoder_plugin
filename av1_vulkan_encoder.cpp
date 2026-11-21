@@ -2,7 +2,7 @@
 
 #include "hw_encoder_capabilities.h"
 
-EncoderInfo Av1VulkanEncoder::encoderInfo = {
+VideoEncoderInfo Av1VulkanEncoder::encoderInfo = {
     .UUID{0x12, 0x1f, 0xa5, 0x6f, 0x3e, 0x4e, 0x4c, 0x3f, 0x9f, 0xf1, 0xb2, 0x26, 0x28, 0xd3, 0xcc, 0x47},
     .codecGroup = "AV1",
     .fourCC = 'av01',
@@ -33,10 +33,7 @@ EncoderInfo Av1VulkanEncoder::encoderInfo = {
         },
 };
 
-Av1VulkanEncoder::Av1VulkanEncoder(const int formatIndex) {
-    FFmpegEncoder::encoderInfo = encoderInfo;
-    FFmpegEncoder::formatIndex = formatIndex;
-}
+Av1VulkanEncoder::Av1VulkanEncoder(const int formatIndex) : FFmpegEncoder(encoderInfo, formatIndex) {}
 
 StatusCode Av1VulkanEncoder::RegisterCodecs(HostListRef* list) {
     InitializeVulkanPresets(encoderInfo);

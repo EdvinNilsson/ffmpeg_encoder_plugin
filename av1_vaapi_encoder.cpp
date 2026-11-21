@@ -2,7 +2,7 @@
 
 #include "hw_encoder_capabilities.h"
 
-EncoderInfo Av1VaapiEncoder::encoderInfo = {
+VideoEncoderInfo Av1VaapiEncoder::encoderInfo = {
     .UUID{0x95, 0x43, 0x6f, 0x52, 0xfb, 0xab, 0x11, 0x60, 0x04, 0x51, 0xf8, 0x5b, 0x83, 0xa4, 0x76, 0x4d},
     .codecGroup = "AV1",
     .fourCC = 'av01',
@@ -33,10 +33,7 @@ EncoderInfo Av1VaapiEncoder::encoderInfo = {
         },
 };
 
-Av1VaapiEncoder::Av1VaapiEncoder(const int formatIndex) {
-    FFmpegEncoder::encoderInfo = encoderInfo;
-    FFmpegEncoder::formatIndex = formatIndex;
-}
+Av1VaapiEncoder::Av1VaapiEncoder(const int formatIndex) : FFmpegEncoder(encoderInfo, formatIndex) {}
 
 StatusCode Av1VaapiEncoder::RegisterCodecs(HostListRef* list) {
     InitializeVaapiPresets(encoderInfo);
