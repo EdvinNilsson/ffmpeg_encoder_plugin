@@ -159,7 +159,7 @@ StatusCode AudioEncoder::DoOpen(HostBufferRef* p_pBuff) {
 
     uint32_t profile;
     if (AV_PROFILE_AAC_MAIN <= ctx->profile && ctx->profile <= AV_PROFILE_AAC_LTP) {
-        profile = ctx->profile + 1;
+        profile = ctx->profile;
     } else {
         const char* msg = "Unsupported AAC profile.";
         g_Log(logLevelWarn, "FFmpeg Plugin :: %s", msg);
